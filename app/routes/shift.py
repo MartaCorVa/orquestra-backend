@@ -2,15 +2,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.shift import Shift
 from app.models.schedule import Schedule
+from app.models.user import User
 from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftUpdate
 
 router = APIRouter(prefix = "/shifts", tags = ["Shifts"])
 
 
 @router.post("/", response_model = ShiftResponse, status_code = status.HTTP_201_CREATED)
-def create_shift(shift: ShiftCreate, db: Session = Depends(get_db)):
+def create_shift(
+    shift: ShiftCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     schedule = db.query(Schedule).filter(Schedule.id == shift.schedule_id).first()
 
     if not schedule:
@@ -36,12 +42,19 @@ def create_shift(shift: ShiftCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model = list[ShiftResponse])
-def get_shifts(db: Session = Depends(get_db)):
+def get_shifts(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     return db.query(Shift).all()
 
 
 @router.get("/{shift_id}", response_model = ShiftResponse)
-def get_shift(shift_id: int, db: Session = Depends(get_db)):
+def get_shift(
+    shift_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_active_user)
+):
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
 
     if not shift:
@@ -54,7 +67,12 @@ def get_shift(shift_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{shift_id}", response_model = ShiftResponse)
-def update_shift(shift_id: int, shift_data: ShiftUpdate, db: Session = Depends(get_db)):
+def update_shift(
+    shift_id: int,
+    shift_data: ShiftUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
 
     if not shift:
@@ -75,7 +93,11 @@ def update_shift(shift_id: int, shift_data: ShiftUpdate, db: Session = Depends(g
 
 
 @router.delete("/{shift_id}", status_code = status.HTTP_204_NO_CONTENT)
-def delete_shift(shift_id: int, db: Session = Depends(get_db)):
+def delete_shift(
+    shift_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
 
     if not shift:
