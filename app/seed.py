@@ -1,6 +1,7 @@
 import datetime
 
 from app.core.database import SessionLocal
+from app.core.security import hash_password
 from app.models.assignment import Assignment
 from app.models.employee import Employee
 from app.models.schedule import Schedule
@@ -19,13 +20,13 @@ def seed_data():
 
     user1 = User(
         email = "admin@orquestra.com",
-        password = "admin123",
+        password = hash_password("admin123"),
         role = "admin",
         active = True
     )
     user2 = User(
         email = "user@orquestra.com",
-        password = "user123",
+        password = hash_password("user123"),
         role = "employee",
         active = True
     )
