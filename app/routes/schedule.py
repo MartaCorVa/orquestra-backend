@@ -2,14 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.schedule import Schedule
+from app.models.user import User
 from app.schemas.schedule import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 
 router = APIRouter(prefix = "/schedules", tags = ["Schedules"])
 
 
 @router.post("/", response_model = ScheduleResponse, status_code = status.HTTP_201_CREATED)
-def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db)):
+def create_schedule(
+    schedule: ScheduleCreate, 
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     new_schedule = Schedule(
         start_date = schedule.start_date,
         end_date = schedule.end_date,
@@ -24,12 +30,19 @@ def create_schedule(schedule: ScheduleCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model = list[ScheduleResponse])
-def get_schedules(db: Session = Depends(get_db)):
+def get_schedules(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     return db.query(Schedule).all()
 
 
 @router.get("/{schedule_id}", response_model = ScheduleResponse)
-def get_schedule(schedule_id: int, db: Session = Depends(get_db)):
+def get_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_active_user)
+):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
@@ -42,7 +55,12 @@ def get_schedule(schedule_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{schedule_id}", response_model = ScheduleResponse)
-def update_schedule(schedule_id: int, schedule_data: ScheduleUpdate, db: Session = Depends(get_db)):
+def update_schedule(
+    schedule_id: int,
+    schedule_data: ScheduleUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
@@ -63,7 +81,11 @@ def update_schedule(schedule_id: int, schedule_data: ScheduleUpdate, db: Session
 
 
 @router.delete("/{schedule_id}", status_code = status.HTTP_204_NO_CONTENT)
-def delete_schedule(schedule_id: int, db: Session = Depends(get_db)):
+def delete_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
