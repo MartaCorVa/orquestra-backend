@@ -66,6 +66,44 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 ---
 
+## 🔐 Authentication
+
+- JWT-based authentication  
+- Password hashing using bcrypt  
+- Role-based access control:
+  - Admin users  
+  - Employee users  
+
+Swagger supports authentication using the **Authorize** button.
+
+---
+
+## 📊 Planning & Metrics
+
+### 🔹 Planning
+
+- Automatic shift assignment algorithm  
+- Support for multiple employees per shift  
+- Prevention of duplicate assignments  
+- Avoidance of overlapping shifts for the same employee  
+
+### 🔹 Metrics
+
+#### Workload Metrics
+- Calculate assigned working hours per employee  
+- Filter by custom date ranges  
+- Admins can view all employees or filter by employee  
+- Employees can only view their own workload  
+
+#### Fairness Metrics
+- Evaluate workload distribution within a schedule  
+- Metrics based on assigned hours:
+  - Total assigned hours  
+  - Maximum and minimum assigned hours  
+  - Workload gap between employees  
+
+---
+
 ## 📌 Current features
 
 - CRUD for all entities:
@@ -74,5 +112,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
   - Schedules  
   - Shifts  
   - Assignments  
+- JWT authentication and authorization  
+- Automatic shift planning  
+- Workload and fairness metrics  
 - Dockerized environment  
 - Automatic database setup and seeding  
