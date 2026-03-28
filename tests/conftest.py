@@ -12,6 +12,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from main import app
 from app.core.database import Base, get_db
 
+from tests.fixtures.auth import *
+
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
