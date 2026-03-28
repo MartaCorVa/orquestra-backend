@@ -13,6 +13,7 @@ from main import app
 from app.core.database import Base, get_db
 
 from tests.fixtures.auth import *
+from tests.fixtures.planning import *
 
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
