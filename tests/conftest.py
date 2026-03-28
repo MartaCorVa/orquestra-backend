@@ -14,6 +14,7 @@ from app.core.database import Base, get_db
 
 from tests.fixtures.auth import *
 from tests.fixtures.planning import *
+from tests.fixtures.metrics import *
 
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
