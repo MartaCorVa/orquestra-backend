@@ -17,12 +17,16 @@ Orquestra is a web application for shift planning and fair workload distribution
 
 ### 1. Clone the repository
 
+```bash
 git clone <REPOSITORY_URL>  
 cd orquestra-backend  
+```
 
 ### 2. Start the application
 
+```bash
 docker compose up --build  
+```
 
 ---
 
@@ -101,6 +105,34 @@ Swagger supports authentication using the **Authorize** button.
   - Total assigned hours  
   - Maximum and minimum assigned hours  
   - Workload gap between employees  
+
+---
+
+## 🧪 Testing
+
+The backend includes automated tests using **pytest**.
+
+### 🔹 Test coverage
+
+- Authentication (login)
+- Authorization (role-based access control)
+- Planning service and API
+- Metrics endpoints (fairness and workload)
+
+### 🔹 Running tests
+
+Run tests locally:
+
+```bash
+pytest
+```
+
+### 🔹 Testing setup
+
+- Isolated test database using SQLite
+- Dependency overrides for FastAPI
+- Reusable fixtures for users, authentication, planning, and metrics
+- Tests are fully reproducible and independent from the seeded database
 
 ---
 
