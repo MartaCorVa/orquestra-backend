@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ShiftBase(BaseModel):
@@ -28,6 +28,4 @@ class ShiftUpdate(BaseModel):
 class ShiftResponse(ShiftBase):
     id: int
     created_at: datetime.datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes = True)
