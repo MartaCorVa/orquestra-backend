@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ScheduleBase(BaseModel):
@@ -22,6 +22,4 @@ class ScheduleUpdate(BaseModel):
 class ScheduleResponse(ScheduleBase):
     id: int
     created_at: datetime.datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes = True)
