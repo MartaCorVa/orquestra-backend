@@ -12,3 +12,4 @@ class User(Base):
     role = Column(String, nullable=False)
     active = Column(Boolean, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
+    must_change_password = Column(Boolean, default = True, nullable = False)
