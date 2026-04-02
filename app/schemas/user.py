@@ -7,6 +7,7 @@ class UserBase(BaseModel):
     email: EmailStr
     role: str
     active: bool = True
+    must_change_password: bool = True
 
 
 class UserCreate(UserBase):
@@ -18,6 +19,7 @@ class UserUpdate(BaseModel):
     password: str | None = None
     role: str | None = None
     active: bool | None = None
+    must_change_password: bool = True
 
 
 class UserResponse(UserBase):
