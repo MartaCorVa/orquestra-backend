@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models.user import User
 from app.core.security import hash_password
+from app.models.user import User
 
 
 @pytest.fixture
@@ -12,6 +12,7 @@ def test_user(db: Session):
         password = hash_password("testpassword"),
         role = "admin",
         active = True,
+        must_change_password = False,
     )
 
     db.add(user)
@@ -28,6 +29,7 @@ def employee_user(db: Session):
         password = hash_password("testpassword"),
         role = "employee",
         active = True,
+        must_change_password = False,
     )
 
     db.add(user)
@@ -44,6 +46,7 @@ def inactive_user(db: Session):
         password = hash_password("testpassword"),
         role = "admin",
         active = False,
+        must_change_password = False,
     )
 
     db.add(user)

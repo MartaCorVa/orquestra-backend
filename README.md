@@ -78,7 +78,23 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
   - Admin users  
   - Employee users  
 
+### 🔹 First login flow
+
+- Users created by an administrator are assigned a temporary password  
+- These users are required to change their password on their first login  
+- The system indicates whether a password change is required through a dedicated flag  
+- Once the password is updated, the user can continue using the application normally  
+
 Swagger supports authentication using the **Authorize** button.
+
+---
+
+## 👥 Employee onboarding
+
+- Administrators can create an employee and its associated user account in a single operation  
+- The process ensures consistency by creating and linking both entities together  
+- Duplicate email addresses are not allowed  
+- Newly created users are marked to require a password change on first login  
 
 ---
 
@@ -116,6 +132,8 @@ The backend includes automated tests using **pytest**.
 
 - Authentication (login)
 - Authorization (role-based access control)
+- Employee onboarding (user + employee creation in one step)
+- First login password change flow
 - Planning service and API
 - Metrics endpoints (fairness and workload)
 
@@ -145,6 +163,8 @@ pytest
   - Shifts  
   - Assignments  
 - JWT authentication and authorization  
+- Employee onboarding (user + employee creation in one step)
+- First login password change flow
 - Automatic shift planning  
 - Workload and fairness metrics  
 - Dockerized environment  

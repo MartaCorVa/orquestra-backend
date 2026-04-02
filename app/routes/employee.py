@@ -6,6 +6,8 @@ from app.core.dependencies import get_current_active_user, get_current_admin_use
 from app.models.employee import Employee
 from app.models.user import User
 from app.schemas.employee import EmployeeCreate, EmployeeResponse, EmployeeUpdate
+from app.schemas.employee_onboarding import EmployeeOnboardingCreate, EmployeeOnboardingResponse
+from app.services.employee_onboarding_service import create_employee_with_user
 
 router = APIRouter(prefix = "/employees", tags = ["Employees"])
 
@@ -38,6 +40,34 @@ def create_employee(
     db.refresh(new_employee)
 
     return new_employee
+
+
+@router.post("/onboarding", response_model = EmployeeOnboardingResponse, status_code = status.HTTP_201_CREATED)
+def onboard_employee(
+    payload: EmployeeOnboardingCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
+    try:
+        result = create_employee_with_user(db, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = str(exc)
+        )
+
+    return {
+        "user_id": result["user"].id,
+        "employee_id": result["employee"].id,
+        "email": result["user"].email,
+        "role": result["user"].role,
+        "must_change_password": result["user"].must_change_password,
+        "first_name": result["employee"].first_name,
+        "last_name": result["employee"].last_name,
+        "phone_number": result["employee"].phone_number,
+        "max_weekly_hours": result["employee"].max_weekly_hours,
+        "active": result["employee"].active
+    }
 
 
 @router.get("/", response_model = list[EmployeeResponse])

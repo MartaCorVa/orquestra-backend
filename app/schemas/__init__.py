@@ -1,5 +1,7 @@
 from app.schemas.assignment import AssignmentCreate, AssignmentResponse, AssignmentUpdate
+from app.schemas.auth import LoginResponse
 from app.schemas.employee import EmployeeCreate, EmployeeResponse, EmployeeUpdate
+from app.schemas.employee_onboarding import EmployeeOnboardingCreate, EmployeeOnboardingResponse
 from app.schemas.schedule import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftUpdate
 from app.schemas.user import UserCreate, UserResponse, UserUpdate

@@ -22,13 +22,15 @@ def seed_data():
         email = "admin@orquestra.com",
         password = hash_password("admin123"),
         role = "admin",
-        active = True
+        active = True,
+        must_change_password = False
     )
     user2 = User(
         email = "user@orquestra.com",
         password = hash_password("user123"),
         role = "employee",
-        active = True
+        active = True,
+        must_change_password = False
     )
 
     db.add_all([user1, user2])
