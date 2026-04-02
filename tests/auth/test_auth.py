@@ -13,6 +13,8 @@ def test_login_success(client, test_user):
 
     assert "access_token" in response_data
     assert "token_type" in response_data
+    assert "must_change_password" in response_data
+    assert response_data["must_change_password"] is False
     assert response_data["token_type"] == "bearer"
 
 
