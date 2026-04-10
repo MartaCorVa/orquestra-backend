@@ -89,12 +89,67 @@ Swagger supports authentication using the **Authorize** button.
 
 ---
 
+## 🔐 Authorization & Data Access
+
+The application enforces role-based access control and data filtering.
+
+### Roles
+
+- Admin
+  - Full access to all resources
+  - Can manage employees, schedules, shifts, and assignments
+- Employee
+  - Limited access to personal data
+  - Can only access:
+    - assigned shifts
+    - schedules where they have assignments
+    - their own workload metrics
+
+### Access behavior
+
+- Data returned by the API is filtered based on the authenticated user
+- Unauthorized access attempts return a 403 Forbidden response
+- This ensures that employees can only access their own planning context
+
+---
+
 ## 👥 Employee onboarding
 
 - Administrators can create an employee and its associated user account in a single operation  
 - The process ensures consistency by creating and linking both entities together  
 - Duplicate email addresses are not allowed  
 - Newly created users are marked to require a password change on first login  
+
+---
+
+## 📅 Schedule management
+
+The application supports full schedule management with role-based access.
+
+### Features
+
+- Create and manage schedules
+- Associate shifts with schedules
+- Generate planning automatically
+
+### Schedule detail
+
+- Each schedule provides a complete planning overview
+- Includes:
+  - shifts grouped by date
+  - assignments per shift
+  - employees assigned to each shift
+
+### Access control
+
+- Admin users can access all schedules
+- Employees can only access schedules where they have assigned shifts
+
+### Backend behavior
+
+- Schedule data is returned in a structured format
+- All required information (shifts and assignments) is included in a single response
+- This reduces the need for multiple API calls and improves consistency
 
 ---
 
@@ -162,10 +217,12 @@ pytest
   - Schedules  
   - Shifts  
   - Assignments  
-- JWT authentication and authorization  
+- JWT authentication and role-based authorization
 - Employee onboarding (user + employee creation in one step)
 - First login password change flow
-- Automatic shift planning  
-- Workload and fairness metrics  
-- Dockerized environment  
-- Automatic database setup and seeding  
+- Automatic shift planning
+- Workload and fairness metrics
+- Role-based data filtering in API responses
+- Structured schedule detail with nested shifts and assignments
+- Dockerized environment
+- Automatic database setup and seeding
