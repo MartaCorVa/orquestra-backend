@@ -1,13 +1,16 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
+from app.models.assignment import Assignment
+from app.models.employee import Employee
 from app.models.schedule import Schedule
+from app.models.shift import Shift
 from app.models.user import User
-from app.schemas.metrics import ScheduleFairnessResponse, WorkloadMetricsResponse
+from app.schemas.metrics import ScheduleFairnessResponse, WorkloadMetricsResponse, SummaryResponse, RecentScheduleResponse
 from app.services.metrics_service import calculate_schedule_fairness, calculate_workload_metrics
 
 router = APIRouter(prefix = "/metrics", tags = ["Metrics"])
@@ -45,3 +48,99 @@ def get_workload_metrics(
         )
     except ValueError as exc:
         raise HTTPException(status_code = 400, detail = str(exc))
+    
+
+@router.get("/summary", response_model = SummaryResponse)
+def get_metrics_summary(db: Session = Depends(get_db)):
+    active_employees = db.query(Employee).filter(Employee.active == True).count()
+
+    today = date.today()
+    start_of_week = today - timedelta(days=today.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+
+    weekly_shifts = (
+        db.query(Shift)
+        .filter(
+            Shift.date >= start_of_week,
+            Shift.date <= end_of_week
+        ).count()
+    )
+    
+    schedules = (
+        db.query(Schedule)
+        .filter(
+            Schedule.start_date <= end_of_week,
+            Schedule.end_date >= start_of_week
+        ).count()
+    )
+
+    pending_validations = db.query(Schedule).filter(Schedule.status == "draft").count()    
+
+    return {
+        "active_employees": active_employees,
+        "weekly_shifts": weekly_shifts,
+        "schedules": schedules,
+        "pending_validations": pending_validations
+    }
+
+
+@router.get("/recent-schedule", response_model=RecentScheduleResponse | None)
+def get_recent_schedule(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    schedule = None
+
+    if current_user.role == "admin":
+        schedule = (
+            db.query(Schedule)
+            .order_by(Schedule.created_at.desc())
+            .first()
+        )
+    else:
+        employee = (
+            db.query(Employee)
+            .filter(Employee.user_id == current_user.id)
+            .first()
+        )
+
+        if not employee:
+            return None
+
+        schedule = (
+            db.query(Schedule)
+            .join(Shift, Shift.schedule_id == Schedule.id)
+            .join(Assignment, Assignment.shift_id == Shift.id)
+            .filter(Assignment.employee_id == employee.id)
+            .distinct()
+            .order_by(Schedule.created_at.desc())
+            .first()
+        )
+
+    if not schedule:
+        return None
+
+    shifts = (
+        db.query(Shift)
+        .filter(Shift.schedule_id == schedule.id)
+        .order_by(Shift.date.asc(), Shift.start_time.asc())
+        .all()
+    )
+
+    return {
+        "id": schedule.id,
+        "shifts": [
+            {
+                "date": shift.date,
+                "start_time": shift.start_time,
+                "end_time": shift.end_time,
+                "status": shift.status,
+                "number_of_employees": (
+                    db.query(Assignment)
+                    .filter(Assignment.shift_id == shift.id)
+                    .count()
+                ),
+            }
+            for shift in shifts
+        ]
+    }
