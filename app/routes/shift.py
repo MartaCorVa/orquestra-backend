@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
+from app.models.assignment import Assignment
+from app.models.employee import Employee
 from app.models.shift import Shift
 from app.models.schedule import Schedule
 from app.models.user import User
@@ -41,12 +43,27 @@ def create_shift(
     return new_shift
 
 
-@router.get("/", response_model = list[ShiftResponse])
+@router.get("/", response_model=list[ShiftResponse])
 def get_shifts(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_active_user)
 ):
-    return db.query(Shift).all()
+    if current_user.role == "admin":
+        shifts = db.query(Shift).all()
+    else:
+        employee = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+
+        if not employee:
+            return []
+
+        shifts = (
+            db.query(Shift)
+            .join(Assignment, Assignment.shift_id == Shift.id)
+            .filter(Assignment.employee_id == employee.id)
+            .all()
+        )
+
+    return shifts
 
 
 @router.get("/{shift_id}", response_model = ShiftResponse)

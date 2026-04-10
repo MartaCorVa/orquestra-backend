@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from datetime import date
+from datetime import date, time
 
 class EmployeeFairnessMetric(BaseModel):
     employee_id: int
@@ -32,3 +32,22 @@ class WorkloadMetricsResponse(BaseModel):
     end_date: date
     total_assigned_hours: float
     employees: list[EmployeeWorkloadMetric]
+
+
+class SummaryResponse(BaseModel):
+    active_employees: int
+    weekly_shifts: int
+    schedules: int
+    pending_validations: int
+
+
+class RecentScheduleShiftResponse(BaseModel):
+    date: date
+    start_time: time
+    end_time: time
+    status: str
+    number_of_employees: int
+
+class RecentScheduleResponse(BaseModel):
+    id: int
+    shifts: list[RecentScheduleShiftResponse]
