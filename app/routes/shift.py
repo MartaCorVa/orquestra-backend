@@ -8,7 +8,7 @@ from app.models.employee import Employee
 from app.models.shift import Shift
 from app.models.schedule import Schedule
 from app.models.user import User
-from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftUpdate
+from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftTableResponse, ShiftUpdate
 
 router = APIRouter(prefix = "/shifts", tags = ["Shifts"])
 
@@ -64,6 +64,65 @@ def get_shifts(
         )
 
     return shifts
+
+
+@router.get("/table", response_model=list[ShiftTableResponse])
+def get_shifts_table(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.role == "admin":
+        rows = (
+            db.query(
+                Shift.id,
+                Shift.date,
+                Shift.start_time,
+                Shift.end_time,
+                Shift.status,
+                Shift.creation_type,
+                Employee.id.label("employee_id"),
+                (Employee.first_name + " " + Employee.last_name).label("employee_name"),
+            )
+            .outerjoin(Assignment, Assignment.shift_id == Shift.id)
+            .outerjoin(Employee, Employee.id == Assignment.employee_id)
+            .all()
+        )
+    else:
+        employee = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+
+        if not employee:
+            return []
+
+        rows = (
+            db.query(
+                Shift.id,
+                Shift.date,
+                Shift.start_time,
+                Shift.end_time,
+                Shift.status,
+                Shift.creation_type,
+                Employee.id.label("employee_id"),
+                (Employee.first_name + " " + Employee.last_name).label("employee_name"),
+            )
+            .join(Assignment, Assignment.shift_id == Shift.id)
+            .join(Employee, Employee.id == Assignment.employee_id)
+            .filter(Employee.id == employee.id)
+            .all()
+        )
+
+    return [
+        ShiftTableResponse(
+            id = row.id,
+            date = row.date,
+            start_time = row.start_time,
+            end_time = row.end_time,
+            status = row.status,
+            creation_type = row.creation_type,
+            employee_id = row.employee_id,
+            employee_name = row.employee_name,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/{shift_id}", response_model = ShiftResponse)

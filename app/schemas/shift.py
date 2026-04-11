@@ -1,12 +1,12 @@
-import datetime
+import datetime as dt
 
 from pydantic import BaseModel, ConfigDict
 
 
 class ShiftBase(BaseModel):
-    date: datetime.date
-    start_time: datetime.time
-    end_time: datetime.time
+    date: dt.date
+    start_time: dt.time
+    end_time: dt.time
     creation_type: str
     status: str
     schedule_id: int
@@ -17,9 +17,9 @@ class ShiftCreate(ShiftBase):
 
 
 class ShiftUpdate(BaseModel):
-    date: datetime.date | None = None
-    start_time: datetime.time | None = None
-    end_time: datetime.time | None = None
+    date: dt.date | None = None
+    start_time: dt.time | None = None
+    end_time: dt.time | None = None
     creation_type: str | None = None
     status: str | None = None
     schedule_id: int | None = None
@@ -27,5 +27,18 @@ class ShiftUpdate(BaseModel):
 
 class ShiftResponse(ShiftBase):
     id: int
-    created_at: datetime.datetime
+    created_at: dt.datetime
     model_config = ConfigDict(from_attributes = True)
+
+
+class ShiftTableResponse(BaseModel):
+    id: int
+    date: dt.date
+    start_time: dt.time
+    end_time: dt.time
+    status: str
+    creation_type: str
+    employee_id: int | None = None
+    employee_name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
