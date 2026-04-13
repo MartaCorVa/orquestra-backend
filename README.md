@@ -153,6 +153,33 @@ The application supports full schedule management with role-based access.
 
 ---
 
+## ⏱️ Shift management
+
+Shifts are defined using precise datetime intervals, allowing support for overnight and cross-day shifts.
+
+### Features
+
+- Shifts use:
+  - `start_datetime`
+  - `end_datetime`
+- Support for shifts crossing midnight (e.g., 22:00 → 04:00)
+- Optional employee assignment at creation time
+- Ability to assign, reassign, or remove employees from shifts
+
+### Validation rules
+
+All shift operations (manual creation, update, and automatic planning) share the same validation logic:
+
+- End datetime must be later than start datetime  
+- Shift must belong to the selected schedule range  
+- No overlapping shifts for the same employee  
+- Minimum rest period of 12 hours between shifts  
+- Respect of maximum weekly working hours per employee  
+
+Validation errors are aggregated and returned together to provide clear feedback.
+
+---
+
 ## 📊 Planning & Metrics
 
 ### 🔹 Planning
@@ -160,7 +187,18 @@ The application supports full schedule management with role-based access.
 - Automatic shift assignment algorithm  
 - Support for multiple employees per shift  
 - Prevention of duplicate assignments  
-- Avoidance of overlapping shifts for the same employee  
+
+- Validation-based assignment:
+  - No overlapping shifts per employee  
+  - Minimum rest period of 12 hours between shifts  
+  - Respect of maximum weekly working hours per employee  
+
+- Planning results include detailed feedback:
+  - Successfully created assignments  
+  - Shifts that could not be fully assigned  
+  - Per-employee validation errors explaining why assignment was not possible  
+
+This ensures that planning is not only automatic, but also explainable and aligned with business rules.
 
 ### 🔹 Metrics
 
@@ -220,9 +258,28 @@ pytest
 - JWT authentication and role-based authorization
 - Employee onboarding (user + employee creation in one step)
 - First login password change flow
-- Automatic shift planning
+- Automatic shift planning with constraint validation:
+  - No overlapping shifts  
+  - Minimum rest period enforcement  
+  - Weekly hour limits per employee  
+- Explainable planning results (assignment success and failure reasons)  
 - Workload and fairness metrics
 - Role-based data filtering in API responses
 - Structured schedule detail with nested shifts and assignments
 - Dockerized environment
 - Automatic database setup and seeding
+
+--- 
+
+## 🧠 Design considerations
+
+The system centralizes shift validation logic in a dedicated service layer.
+
+- The same validation rules are reused across:
+  - Manual shift creation  
+  - Shift updates  
+  - Automatic planning  
+
+This ensures consistency, reduces duplication, and improves maintainability.
+
+Additionally, the planning system provides explainable results, allowing users to understand why certain assignments could not be performed.

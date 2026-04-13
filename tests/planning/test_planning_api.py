@@ -18,7 +18,8 @@ def test_generate_planning_creates_assignments(client, auth_headers, test_schedu
 
     assert response.status_code == 200
     assert "assignments_created" in response.json()
-    assert response.json()["assignments_created"] == 2
+    assert len(response.json()["assignments_created"]) == 2
+    assert response.json()["unfilled_shifts"] == []
 
 
 def test_generate_planning_returns_404_for_missing_schedule(client, auth_headers):

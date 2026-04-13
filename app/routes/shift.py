@@ -6,9 +6,14 @@ from app.core.dependencies import get_current_active_user, get_current_admin_use
 from app.models.assignment import Assignment
 from app.models.employee import Employee
 from app.models.shift import Shift
-from app.models.schedule import Schedule
 from app.models.user import User
 from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftTableResponse, ShiftUpdate
+from app.services.shift_service import (
+    create_shift_with_optional_assignment,
+    get_shift_creation_errors,
+    validate_employee_for_assignment,
+    validate_schedule_exists,
+)
 
 router = APIRouter(prefix = "/shifts", tags = ["Shifts"])
 
@@ -19,31 +24,18 @@ def create_shift(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user)
 ):
-    schedule = db.query(Schedule).filter(Schedule.id == shift.schedule_id).first()
-
-    if not schedule:
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = "Schedule does not exist"
-        )
-
-    new_shift = Shift(
-        date = shift.date,
-        start_time = shift.start_time,
-        end_time = shift.end_time,
+    return create_shift_with_optional_assignment(
+        db = db,
+        start_datetime = shift.start_datetime,
+        end_datetime = shift.end_datetime,
         creation_type = shift.creation_type,
-        status = shift.status,
-        schedule_id = shift.schedule_id
+        status_value = shift.status,
+        schedule_id = shift.schedule_id,
+        employee_id = shift.employee_id
     )
 
-    db.add(new_shift)
-    db.commit()
-    db.refresh(new_shift)
 
-    return new_shift
-
-
-@router.get("/", response_model=list[ShiftResponse])
+@router.get("/", response_model = list[ShiftResponse])
 def get_shifts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -66,7 +58,7 @@ def get_shifts(
     return shifts
 
 
-@router.get("/table", response_model=list[ShiftTableResponse])
+@router.get("/table", response_model = list[ShiftTableResponse])
 def get_shifts_table(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -75,9 +67,8 @@ def get_shifts_table(
         rows = (
             db.query(
                 Shift.id,
-                Shift.date,
-                Shift.start_time,
-                Shift.end_time,
+                Shift.start_datetime,
+                Shift.end_datetime,
                 Shift.status,
                 Shift.creation_type,
                 Employee.id.label("employee_id"),
@@ -96,9 +87,8 @@ def get_shifts_table(
         rows = (
             db.query(
                 Shift.id,
-                Shift.date,
-                Shift.start_time,
-                Shift.end_time,
+                Shift.start_datetime,
+                Shift.end_datetime,
                 Shift.status,
                 Shift.creation_type,
                 Employee.id.label("employee_id"),
@@ -113,9 +103,8 @@ def get_shifts_table(
     return [
         ShiftTableResponse(
             id = row.id,
-            date = row.date,
-            start_time = row.start_time,
-            end_time = row.end_time,
+            start_datetime = row.start_datetime,
+            end_datetime = row.end_datetime,
             status = row.status,
             creation_type = row.creation_type,
             employee_id = row.employee_id,
@@ -159,8 +148,80 @@ def update_shift(
 
     update_data = shift_data.model_dump(exclude_unset = True)
 
-    for field, value in update_data.items():
-        setattr(shift, field, value)
+    new_start_datetime = update_data.get("start_datetime", shift.start_datetime)
+    new_end_datetime = update_data.get("end_datetime", shift.end_datetime)
+    new_creation_type = update_data.get("creation_type", shift.creation_type)
+    new_status = update_data.get("status", shift.status)
+    new_schedule_id = update_data.get("schedule_id", shift.schedule_id)
+
+    schedule = validate_schedule_exists(db = db, schedule_id = new_schedule_id)
+
+    current_assignment = (
+        db.query(Assignment)
+        .filter(Assignment.shift_id == shift.id)
+        .first()
+    )
+
+    employee_id_was_sent = "employee_id" in shift_data.model_fields_set
+
+    if employee_id_was_sent:
+        requested_employee_id = shift_data.employee_id
+
+        if requested_employee_id is None:
+            employee = None
+        else:
+            employee = validate_employee_for_assignment(
+                db = db,
+                employee_id = requested_employee_id,
+            )
+    else:
+        if current_assignment is not None:
+            employee = db.query(Employee).filter(Employee.id == current_assignment.employee_id).first()
+        else:
+            employee = None
+
+    errors = get_shift_creation_errors(
+        db = db,
+        start_datetime = new_start_datetime,
+        end_datetime = new_end_datetime,
+        schedule = schedule,
+        employee = employee,
+    )
+
+    if current_assignment is not None and employee is not None and current_assignment.employee_id == employee.id:
+        errors = [
+            error for error in errors
+            if error != "The shift overlaps with another shift already assigned to this employee"
+        ]
+
+    if errors:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = {
+                "message": "Shift validation failed",
+                "errors": list(dict.fromkeys(errors)),
+            },
+        )
+
+    shift.start_datetime = new_start_datetime
+    shift.end_datetime = new_end_datetime
+    shift.creation_type = new_creation_type
+    shift.status = new_status
+    shift.schedule_id = new_schedule_id
+
+    if employee_id_was_sent:
+        if shift_data.employee_id is None:
+            if current_assignment is not None:
+                db.delete(current_assignment)
+        else:
+            if current_assignment is None:
+                new_assignment = Assignment(
+                    employee_id = employee.id,
+                    shift_id = shift.id,
+                )
+                db.add(new_assignment)
+            else:
+                current_assignment.employee_id = employee.id
 
     db.commit()
     db.refresh(shift)
@@ -181,6 +242,11 @@ def delete_shift(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = "Shift not found"
         )
+
+    assignments = db.query(Assignment).filter(Assignment.shift_id == shift.id).all()
+
+    for assignment in assignments:
+        db.delete(assignment)
 
     db.delete(shift)
     db.commit()
