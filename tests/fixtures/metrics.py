@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime
 
 import pytest
 
@@ -110,18 +110,16 @@ def metrics_data(db, metrics_employee_user):
     db.refresh(schedule)
 
     shift_1 = Shift(
-        date = date(2026, 3, 2),
-        start_time = time(9, 0),
-        end_time = time(13, 0),
+        start_datetime = datetime(2026, 3, 2, 9, 0),
+        end_datetime = datetime(2026, 3, 2, 13, 0),
         creation_type = "manual",
         status = "assigned",
         schedule_id = schedule.id,
     )
 
     shift_2 = Shift(
-        date = date(2026, 3, 3),
-        start_time = time(10, 0),
-        end_time = time(14, 0),
+        start_datetime = datetime(2026, 3, 3, 10, 0),
+        end_datetime = datetime(2026, 3, 3, 14, 0),
         creation_type = "manual",
         status = "assigned",
         schedule_id = schedule.id,
