@@ -5,5 +5,5 @@ from app.schemas.employee_onboarding import EmployeeOnboardingCreate, EmployeeOn
 from app.schemas.schedule import ScheduleCreate, ScheduleResponse, ScheduleUpdate
 from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftUpdate
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
-from app.schemas.planning import PlanningGenerateRequest
+from app.schemas.planning import GeneratePlanningRequest
 from app.schemas.metrics import EmployeeFairnessMetric, ScheduleFairnessResponse, EmployeeWorkloadMetric, WorkloadMetricsResponse
