@@ -1,44 +1,58 @@
-import datetime as dt
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class ShiftBase(BaseModel):
-    date: dt.date
-    start_time: dt.time
-    end_time: dt.time
+    start_datetime: datetime
+    end_datetime: datetime
     creation_type: str
     status: str
     schedule_id: int
 
+    @model_validator(mode = "after")
+    def validate_datetimes(self):
+        if self.end_datetime <= self.start_datetime:
+            raise ValueError("End datetime must be later than start datetime")
+        return self
+
 
 class ShiftCreate(ShiftBase):
-    pass
+    employee_id: int | None = None
 
 
 class ShiftUpdate(BaseModel):
-    date: dt.date | None = None
-    start_time: dt.time | None = None
-    end_time: dt.time | None = None
+    start_datetime: datetime | None = None
+    end_datetime: datetime | None = None
     creation_type: str | None = None
     status: str | None = None
     schedule_id: int | None = None
+    employee_id: int | None = None
+
+    @model_validator(mode = "after")
+    def validate_datetimes(self):
+        if (
+            self.start_datetime is not None
+            and self.end_datetime is not None
+            and self.end_datetime <= self.start_datetime
+        ):
+            raise ValueError("End datetime must be later than start datetime")
+        return self
 
 
 class ShiftResponse(ShiftBase):
     id: int
-    created_at: dt.datetime
+    created_at: datetime
+    employee_id: int | None = None
+    employee_name: str | None = None
     model_config = ConfigDict(from_attributes = True)
 
 
 class ShiftTableResponse(BaseModel):
     id: int
-    date: dt.date
-    start_time: dt.time
-    end_time: dt.time
+    start_datetime: datetime
+    end_datetime: datetime
     status: str
     creation_type: str
     employee_id: int | None = None
-    employee_name: str | None = None
-
-    model_config = ConfigDict(from_attributes=True)
+    employee_name: str | None = None    
