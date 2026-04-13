@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date, datetime
 
 import pytest
 
@@ -64,17 +64,15 @@ def active_employees(db):
 def test_shifts(db, test_schedule):
     shifts = [
         Shift(
-            date = date(2026, 3, 1),
-            start_time = time(9, 0),
-            end_time = time(13, 0),
+            start_datetime = datetime(2026, 3, 1, 9, 0),
+            end_datetime = datetime(2026, 3, 1, 13, 0),
             creation_type = "manual",
             status = "pending",
             schedule_id = test_schedule.id,
         ),
         Shift(
-            date = date(2026, 3, 1),
-            start_time = time(14, 0),
-            end_time = time(18, 0),
+            start_datetime = datetime(2026, 3, 1, 14, 0),
+            end_datetime = datetime(2026, 3, 1, 18, 0),
             creation_type = "manual",
             status = "pending",
             schedule_id = test_schedule.id,
