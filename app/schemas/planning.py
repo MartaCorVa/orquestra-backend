@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-class PlanningGenerateRequest(BaseModel):
-    employees_per_shift: int = Field(default = 1, ge = 1)
+
+class GeneratePlanningRequest(BaseModel):
+    schedule_id: int
+    employees_per_shift: int
