@@ -18,13 +18,43 @@ from app.services.shift_service import (
 router = APIRouter(prefix = "/shifts", tags = ["Shifts"])
 
 
+def build_shift_response(db: Session, shift: Shift) -> ShiftResponse:
+    assignment = (
+        db.query(Assignment)
+        .join(Employee, Employee.id == Assignment.employee_id)
+        .filter(Assignment.shift_id == shift.id)
+        .first()
+    )
+
+    employee = None
+
+    if assignment is not None:
+        employee = db.query(Employee).filter(Employee.id == assignment.employee_id).first()
+
+    return ShiftResponse(
+        id = shift.id,
+        start_datetime = shift.start_datetime,
+        end_datetime = shift.end_datetime,
+        creation_type = shift.creation_type,
+        status = shift.status,
+        schedule_id = shift.schedule_id,
+        created_at = shift.created_at,
+        employee_id = employee.id if employee is not None else None,
+        employee_name = (
+            f"{employee.first_name} {employee.last_name}"
+            if employee is not None
+            else None
+        ),
+    )
+
+
 @router.post("/", response_model = ShiftResponse, status_code = status.HTTP_201_CREATED)
 def create_shift(
     shift: ShiftCreate,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user)
 ):
-    return create_shift_with_optional_assignment(
+    new_shift = create_shift_with_optional_assignment(
         db = db,
         start_datetime = shift.start_datetime,
         end_datetime = shift.end_datetime,
@@ -33,6 +63,8 @@ def create_shift(
         schedule_id = shift.schedule_id,
         employee_id = shift.employee_id
     )
+
+    return build_shift_response(db = db, shift = new_shift)
 
 
 @router.get("/", response_model = list[ShiftResponse])
@@ -55,7 +87,7 @@ def get_shifts(
             .all()
         )
 
-    return shifts
+    return [build_shift_response(db = db, shift = shift) for shift in shifts]
 
 
 @router.get("/table", response_model = list[ShiftTableResponse])
@@ -128,7 +160,7 @@ def get_shift(
             detail = "Shift not found"
         )
 
-    return shift
+    return build_shift_response(db = db, shift = shift)
 
 
 @router.put("/{shift_id}", response_model = ShiftResponse)
@@ -226,7 +258,7 @@ def update_shift(
     db.commit()
     db.refresh(shift)
 
-    return shift
+    return build_shift_response(db = db, shift = shift)
 
 
 @router.delete("/{shift_id}", status_code = status.HTTP_204_NO_CONTENT)
