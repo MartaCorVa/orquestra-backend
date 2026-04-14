@@ -94,7 +94,7 @@ def get_schedule_by_id(
     shifts = (
         db.query(Shift)
         .filter(Shift.schedule_id == schedule.id)
-        .order_by(Shift.date.asc(), Shift.start_time.asc())
+        .order_by(Shift.start_datetime.asc())
         .all()
     )
 
@@ -132,9 +132,9 @@ def get_schedule_by_id(
         "shifts": [
             {
                 "id": shift.id,
-                "date": shift.date,
-                "start_time": shift.start_time,
-                "end_time": shift.end_time,
+                "date": shift.start_datetime.date(),
+                "start_time": shift.start_datetime.time(),
+                "end_time": shift.end_datetime.time(),
                 "status": shift.status,
                 "assignments": [
                     {
