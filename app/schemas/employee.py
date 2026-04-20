@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.contract import ContractCreate, ContractResponse, ContractUpdate
+
 
 class EmployeeBase(BaseModel):
     first_name: str
@@ -12,7 +14,7 @@ class EmployeeBase(BaseModel):
 
 
 class EmployeeCreate(EmployeeBase):
-    pass
+    contract: ContractCreate
 
 
 class EmployeeUpdate(BaseModel):
@@ -21,9 +23,11 @@ class EmployeeUpdate(BaseModel):
     phone_number: str | None = None
     active: bool | None = None
     user_id: int | None = None
+    contract: ContractUpdate | None = None
 
 
 class EmployeeResponse(EmployeeBase):
     id: int
     created_at: datetime
+    contract: ContractResponse | None = None
     model_config = ConfigDict(from_attributes = True)
