@@ -17,4 +17,4 @@ class Employee(Base):
     created_at = Column(TIMESTAMP, server_default = func.now())
 
     assignments = relationship("Assignment", back_populates = "employee")
-    contract = relationship("Contract", back_populates = "employee", uselist = False, cascade = "all, delete-orphan")
+    contracts = relationship("Contract", back_populates = "employee", cascade = "all, delete-orphan")

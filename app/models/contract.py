@@ -50,4 +50,4 @@ class Contract(Base):
         nullable = False,
     )
 
-    employee = relationship("Employee", back_populates = "contract")
+    employee = relationship("Employee", back_populates = "contracts")
