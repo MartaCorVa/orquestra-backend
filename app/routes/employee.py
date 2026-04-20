@@ -30,7 +30,6 @@ def create_employee(
         first_name = employee.first_name,
         last_name = employee.last_name,
         phone_number = employee.phone_number,
-        max_weekly_hours = employee.max_weekly_hours,
         active = employee.active,
         user_id = employee.user_id
     )
@@ -65,7 +64,6 @@ def onboard_employee(
         "first_name": result["employee"].first_name,
         "last_name": result["employee"].last_name,
         "phone_number": result["employee"].phone_number,
-        "max_weekly_hours": result["employee"].max_weekly_hours,
         "active": result["employee"].active
     }
 
