@@ -53,6 +53,7 @@ Initial data includes:
 
 - Users  
 - Employees  
+- Contracts  
 - Schedules  
 - Shifts  
 - Assignments  
@@ -122,6 +123,32 @@ The application enforces role-based access control and data filtering.
 
 ---
 
+## 📄 Contract management
+
+Employee contracts are managed as a separate resource.
+
+### Features
+
+- Each employee can have multiple contracts  
+- Only one contract can be active at a time  
+- Contracts define:
+  - weekly working hours  
+  - daily working hours  
+  - minimum days off per week  
+  - working days (Monday to Sunday)  
+  - optional fixed schedule (start and end time)  
+
+### Behavior
+
+- Contracts are created and managed independently from employees  
+- When a contract is activated:
+  - any previously active contract for that employee is automatically deactivated  
+- Contracts can be updated, activated, or deleted without affecting employee data  
+
+This separation improves flexibility and allows tracking contract changes over time.
+
+---
+
 ## 📅 Schedule management
 
 The application supports full schedule management with role-based access.
@@ -174,7 +201,7 @@ All shift operations (manual creation, update, and automatic planning) share the
 - Shift must belong to the selected schedule range  
 - No overlapping shifts for the same employee  
 - Minimum rest period of 12 hours between shifts  
-- Respect of maximum weekly working hours per employee  
+- Respect of maximum weekly working hours defined in the employee's active contract  
 
 Validation errors are aggregated and returned together to provide clear feedback.
 
@@ -191,7 +218,11 @@ Validation errors are aggregated and returned together to provide clear feedback
 - Validation-based assignment:
   - No overlapping shifts per employee  
   - Minimum rest period of 12 hours between shifts  
-  - Respect of maximum weekly working hours per employee  
+- Respect of maximum weekly working hours defined in the employee's active contract  
+
+- Planning uses the active contract of each employee:
+  - Only employees with an active contract are considered  
+  - Contract rules determine availability and workload limits  
 
 - Planning results include detailed feedback:
   - Successfully created assignments  
@@ -252,6 +283,7 @@ pytest
 - CRUD for all entities:
   - Users  
   - Employees  
+  - Contracts  
   - Schedules  
   - Shifts  
   - Assignments  
@@ -268,6 +300,10 @@ pytest
 - Structured schedule detail with nested shifts and assignments
 - Dockerized environment
 - Automatic database setup and seeding
+- Contract-based workforce management:
+  - Multiple contracts per employee  
+  - Active contract selection  
+  - Planning driven by contract constraints  
 
 --- 
 
@@ -282,4 +318,10 @@ The system centralizes shift validation logic in a dedicated service layer.
 
 This ensures consistency, reduces duplication, and improves maintainability.
 
-Additionally, the planning system provides explainable results, allowing users to understand why certain assignments could not be performed.
+The planning system also provides explainable results, allowing users to understand why certain assignments could not be performed.
+
+Contract management is decoupled from employee management:
+
+- Contracts are handled as independent resources  
+- This allows tracking contract history and changes over time  
+- Planning logic relies on the active contract, improving flexibility and scalability  
