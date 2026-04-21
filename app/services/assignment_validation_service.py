@@ -209,6 +209,28 @@ def validate_contract_daily_hours(
     return errors
 
 
+def validate_contract_fixed_schedule(
+    contract: Contract,
+    start_datetime: datetime,
+    end_datetime: datetime,
+) -> list[str]:
+    errors: list[str] = []
+
+    if not contract.has_fixed_schedule:
+        return errors
+
+    if contract.preferred_start_time is None or contract.preferred_end_time is None:
+        return errors
+
+    shift_start_time = start_datetime.time()
+    shift_end_time = end_datetime.time()
+
+    if shift_start_time < contract.preferred_start_time or shift_end_time > contract.preferred_end_time:
+        errors.append("The shift is outside the fixed schedule allowed by the active contract")
+
+    return errors
+
+
 def get_assignment_errors(
     db: Session,
     shift: Shift,
@@ -235,6 +257,14 @@ def get_assignment_errors(
 
     errors.extend(
         validate_contract_daily_hours(
+            contract = contract,
+            start_datetime = shift.start_datetime,
+            end_datetime = shift.end_datetime,
+        )
+    )
+
+    errors.extend(
+        validate_contract_fixed_schedule(
             contract = contract,
             start_datetime = shift.start_datetime,
             end_datetime = shift.end_datetime,
