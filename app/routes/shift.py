@@ -10,11 +10,7 @@ from app.models.user import User
 from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftTableResponse, ShiftUpdate
 from app.services.shift_service import (
     create_shift_with_optional_assignment,
-    get_shift_creation_errors,
-    normalize_datetime,
     update_shift_with_optional_assignment,
-    validate_employee_for_assignment,
-    validate_schedule_exists,
 )
 
 router = APIRouter(prefix = "/shifts", tags = ["Shifts"])
