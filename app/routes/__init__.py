@@ -6,3 +6,4 @@ from app.routes.assignment import router as assignment_router
 from app.routes.auth import router as auth_router
 from app.routes.planning import router as planning_router
 from app.routes.metrics import router as metrics_router
+from app.routes.contract import router as contract_router

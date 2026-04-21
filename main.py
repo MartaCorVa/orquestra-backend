@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import Base, engine
 from app.models import Assignment, Employee, Schedule, Shift, User
 from app.routes.assignment import router as assignment_router
+from app.routes.contract import router as contract_router
 from app.routes.employee import router as employee_router
 from app.routes.schedule import router as schedule_router
 from app.routes.shift import router as shift_router
@@ -37,6 +38,7 @@ def health_check():
     return {"status": "ok"}
 
 app.include_router(auth_router)
+app.include_router(contract_router)
 app.include_router(user_router)
 app.include_router(employee_router)
 app.include_router(schedule_router)

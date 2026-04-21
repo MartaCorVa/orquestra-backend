@@ -12,9 +12,9 @@ class Employee(Base):
     first_name = Column(String, nullable = False)
     last_name = Column(String, nullable = False)
     phone_number = Column(String)
-    max_weekly_hours = Column(Integer, nullable = False)
     active = Column(Boolean, default = True)
     user_id = Column(Integer, ForeignKey("users.id"), unique = True)
     created_at = Column(TIMESTAMP, server_default = func.now())
 
     assignments = relationship("Assignment", back_populates = "employee")
+    contracts = relationship("Contract", back_populates = "employee", cascade = "all, delete-orphan")

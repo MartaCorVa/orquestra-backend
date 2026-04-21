@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
+from app.models.contract import Contract
 from app.models.employee import Employee
 from app.models.user import User
 from app.schemas.employee import EmployeeCreate, EmployeeResponse, EmployeeUpdate
@@ -14,7 +15,7 @@ router = APIRouter(prefix = "/employees", tags = ["Employees"])
 
 @router.post("/", response_model = EmployeeResponse, status_code = status.HTTP_201_CREATED)
 def create_employee(
-    employee: EmployeeCreate, 
+    employee: EmployeeCreate,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user)
 ):
@@ -30,7 +31,6 @@ def create_employee(
         first_name = employee.first_name,
         last_name = employee.last_name,
         phone_number = employee.phone_number,
-        max_weekly_hours = employee.max_weekly_hours,
         active = employee.active,
         user_id = employee.user_id
     )
@@ -65,7 +65,6 @@ def onboard_employee(
         "first_name": result["employee"].first_name,
         "last_name": result["employee"].last_name,
         "phone_number": result["employee"].phone_number,
-        "max_weekly_hours": result["employee"].max_weekly_hours,
         "active": result["employee"].active
     }
 
@@ -129,7 +128,7 @@ def update_employee(
 
 @router.delete("/{employee_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_employee(
-    employee_id: int, 
+    employee_id: int,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user)
 ):
