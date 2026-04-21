@@ -142,13 +142,13 @@ def seed_data():
             employee_id = juan_employee.id,
             weekly_hours = 35,
             daily_hours = 7,
-            min_days_off_per_week = 2,
+            min_days_off_per_week = 1,
             work_monday = True,
             work_tuesday = True,
             work_wednesday = True,
             work_thursday = True,
             work_friday = True,
-            work_saturday = False,
+            work_saturday = True,
             work_sunday = False,
             has_fixed_schedule = False,
             preferred_start_time = None,
@@ -161,13 +161,13 @@ def seed_data():
             employee_id = ana_employee.id,
             weekly_hours = 30,
             daily_hours = 6,
-            min_days_off_per_week = 2,
+            min_days_off_per_week = 1,
             work_monday = True,
             work_tuesday = True,
             work_wednesday = True,
             work_thursday = True,
             work_friday = True,
-            work_saturday = False,
+            work_saturday = True,
             work_sunday = False,
             has_fixed_schedule = False,
             preferred_start_time = None,
@@ -311,39 +311,6 @@ def seed_data():
     for shift in shifts:
         db.refresh(shift)
 
-    assignments = [
-        Assignment(
-            employee_id = marta_employee.id,
-            shift_id = shifts[0].id,
-        ),
-        Assignment(
-            employee_id = carlos_employee.id,
-            shift_id = shifts[1].id,
-        ),
-        Assignment(
-            employee_id = juan_employee.id,
-            shift_id = shifts[2].id,
-        ),
-        Assignment(
-            employee_id = ana_employee.id,
-            shift_id = shifts[3].id,
-        ),
-        Assignment(
-            employee_id = lucia_employee.id,
-            shift_id = shifts[5].id,
-        ),
-        Assignment(
-            employee_id = marta_employee.id,
-            shift_id = shifts[7].id,
-        ),
-        Assignment(
-            employee_id = juan_employee.id,
-            shift_id = shifts[10].id,
-        ),
-    ]
-
-    db.add_all(assignments)
-    db.commit()
 
     db.close()
     print("Seed completed successfully")
