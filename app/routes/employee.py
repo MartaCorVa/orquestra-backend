@@ -36,38 +36,10 @@ def create_employee(
     )
 
     db.add(new_employee)
-    db.flush()
-
-    new_contract = Contract(
-        employee_id = new_employee.id,
-        weekly_hours = employee.contract.weekly_hours,
-        daily_hours = employee.contract.daily_hours,
-        min_days_off_per_week = employee.contract.min_days_off_per_week,
-        work_monday = employee.contract.work_monday,
-        work_tuesday = employee.contract.work_tuesday,
-        work_wednesday = employee.contract.work_wednesday,
-        work_thursday = employee.contract.work_thursday,
-        work_friday = employee.contract.work_friday,
-        work_saturday = employee.contract.work_saturday,
-        work_sunday = employee.contract.work_sunday,
-        has_fixed_schedule = employee.contract.has_fixed_schedule,
-        preferred_start_time = employee.contract.preferred_start_time,
-        preferred_end_time = employee.contract.preferred_end_time,
-        active = employee.contract.active,
-        start_date = employee.contract.start_date,
-        end_date = employee.contract.end_date,
-    )
-
-    db.add(new_contract)
     db.commit()
     db.refresh(new_employee)
 
-    return (
-        db.query(Employee)
-        .options(joinedload(Employee.contract))
-        .filter(Employee.id == new_employee.id)
-        .first()
-    )
+    return new_employee
 
 
 @router.post("/onboarding", response_model = EmployeeOnboardingResponse, status_code = status.HTTP_201_CREATED)
@@ -102,22 +74,16 @@ def get_employees(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user)
 ):
-    return db.query(Employee).options(joinedload(Employee.contract)).all()
+    return db.query(Employee).all()
 
 
 @router.get("/{employee_id}", response_model = EmployeeResponse)
 def get_employee(
-    employee_id: int,
+    employee_id: int, 
     db: Session = Depends(get_db),
     _: User = Depends(get_current_active_user)
 ):
-    employee = (
-        db.query(Employee)
-        .options(joinedload(Employee.contract))
-        .filter(Employee.id == employee_id)
-        .first()
-    )
-
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -134,13 +100,7 @@ def update_employee(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user)
 ):
-    employee = (
-        db.query(Employee)
-        .options(joinedload(Employee.contract))
-        .filter(Employee.id == employee_id)
-        .first()
-    )
-
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -157,51 +117,13 @@ def update_employee(
 
     update_data = employee_data.model_dump(exclude_unset = True)
 
-    contract_data = update_data.pop("contract", None)
-
     for field, value in update_data.items():
         setattr(employee, field, value)
-
-    if contract_data is not None:
-        if employee.contract is None:
-            if "weekly_hours" not in contract_data or "daily_hours" not in contract_data:
-                raise HTTPException(
-                    status_code = status.HTTP_400_BAD_REQUEST,
-                    detail = "weekly_hours and daily_hours are required to create a contract"
-                )
-
-            employee.contract = Contract(
-                employee_id = employee.id,
-                weekly_hours = contract_data["weekly_hours"],
-                daily_hours = contract_data["daily_hours"],
-                min_days_off_per_week = contract_data.get("min_days_off_per_week", 2),
-                work_monday = contract_data.get("work_monday", True),
-                work_tuesday = contract_data.get("work_tuesday", True),
-                work_wednesday = contract_data.get("work_wednesday", True),
-                work_thursday = contract_data.get("work_thursday", True),
-                work_friday = contract_data.get("work_friday", True),
-                work_saturday = contract_data.get("work_saturday", False),
-                work_sunday = contract_data.get("work_sunday", False),
-                has_fixed_schedule = contract_data.get("has_fixed_schedule", False),
-                preferred_start_time = contract_data.get("preferred_start_time"),
-                preferred_end_time = contract_data.get("preferred_end_time"),
-                active = contract_data.get("active", True),
-                start_date = contract_data.get("start_date"),
-                end_date = contract_data.get("end_date"),
-            )
-        else:
-            for field, value in contract_data.items():
-                setattr(employee.contract, field, value)
 
     db.commit()
     db.refresh(employee)
 
-    return (
-        db.query(Employee)
-        .options(joinedload(Employee.contract))
-        .filter(Employee.id == employee.id)
-        .first()
-    )
+    return employee
 
 
 @router.delete("/{employee_id}", status_code = status.HTTP_204_NO_CONTENT)
