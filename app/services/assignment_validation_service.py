@@ -229,3 +229,62 @@ def get_assignment_errors(
     )
 
     return list(dict.fromkeys(errors))
+
+
+def get_employee_weekly_assigned_hours(
+    db: Session,
+    employee_id: int,
+    reference_datetime: datetime,
+    excluded_shift_id: int | None = None,
+) -> float:
+    week_start, week_end = get_week_bounds(reference_datetime)
+
+    weekly_assigned_shifts_query = (
+        db.query(Shift)
+        .join(Assignment, Assignment.shift_id == Shift.id)
+        .filter(
+            Assignment.employee_id == employee_id,
+            Shift.start_datetime >= week_start,
+            Shift.start_datetime < week_end,
+        )
+    )
+
+    if excluded_shift_id is not None:
+        weekly_assigned_shifts_query = weekly_assigned_shifts_query.filter(Shift.id != excluded_shift_id)
+
+    weekly_assigned_shifts = weekly_assigned_shifts_query.all()
+
+    total_weekly_hours = 0.0
+
+    for weekly_shift in weekly_assigned_shifts:
+        total_weekly_hours += (
+            weekly_shift.end_datetime - weekly_shift.start_datetime
+        ).total_seconds() / 3600
+
+    return total_weekly_hours
+
+
+def get_employee_weekly_working_days(
+    db: Session,
+    employee_id: int,
+    reference_datetime: datetime,
+    excluded_shift_id: int | None = None,
+) -> set:
+    week_start, week_end = get_week_bounds(reference_datetime)
+
+    working_days_query = (
+        db.query(Shift.start_datetime)
+        .join(Assignment, Assignment.shift_id == Shift.id)
+        .filter(
+            Assignment.employee_id == employee_id,
+            Shift.start_datetime >= week_start,
+            Shift.start_datetime < week_end,
+        )
+    )
+
+    if excluded_shift_id is not None:
+        working_days_query = working_days_query.filter(Shift.id != excluded_shift_id)
+
+    working_days = working_days_query.all()
+
+    return {row[0].date() for row in working_days}
