@@ -6,7 +6,11 @@ from app.models.assignment import Assignment
 from app.models.contract import Contract
 from app.models.employee import Employee
 from app.models.shift import Shift
-from app.services.assignment_validation_service import get_assignment_errors
+from app.services.assignment_validation_service import (
+    get_assignment_errors,
+    get_employee_weekly_assigned_hours,
+    get_employee_weekly_working_days,
+)
 from app.services.shift_service import validate_schedule_exists
 
 
@@ -21,8 +25,35 @@ def get_active_contract(db: Session, employee_id: int) -> Contract | None:
     )
 
 
+def get_candidate_priority(
+    db: Session,
+    employee: Employee,
+    contract: Contract,
+    shift: Shift,
+) -> tuple[float, int, int]:
+    assigned_hours = get_employee_weekly_assigned_hours(
+        db = db,
+        employee_id = employee.id,
+        reference_datetime = shift.start_datetime,
+    )
+
+    working_days = get_employee_weekly_working_days(
+        db = db,
+        employee_id = employee.id,
+        reference_datetime = shift.start_datetime,
+    )
+
+    remaining_hours = contract.weekly_hours - assigned_hours
+
+    return (
+        remaining_hours,
+        contract.weekly_hours,
+        -len(working_days),
+    )
+
+
 def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -> dict[str, Any]:
-    schedule = validate_schedule_exists(db = db, schedule_id = schedule_id)
+    validate_schedule_exists(db = db, schedule_id = schedule_id)
 
     all_employees = (
         db.query(Employee)
@@ -62,7 +93,6 @@ def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -
 
     assignments_created: list[Assignment] = []
     unfilled_shifts: list[dict[str, Any]] = []
-    employee_index = 0
     max_employees_per_shift = min(employees_per_shift, len(employees_with_contracts))
 
     for shift in shifts:
@@ -78,9 +108,30 @@ def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -
         max_attempts = len(employees_with_contracts) * 2
 
         while len(assigned_employee_ids) < max_employees_per_shift and attempts < max_attempts:
-            employee, contract = employees_with_contracts[employee_index]
+            candidate_pool: list[tuple[Employee, Contract]] = []
 
-            if employee.id not in assigned_employee_ids:
+            for employee, contract in employees_with_contracts:
+                if employee.id in assigned_employee_ids:
+                    continue
+
+                candidate_pool.append((employee, contract))
+
+            if not candidate_pool:
+                break
+
+            candidate_pool.sort(
+                key = lambda candidate: get_candidate_priority(
+                    db = db,
+                    employee = candidate[0],
+                    contract = candidate[1],
+                    shift = shift,
+                ),
+                reverse = True,
+            )
+
+            assigned_in_iteration = False
+
+            for employee, contract in candidate_pool:
                 errors = get_assignment_errors(
                     db = db,
                     shift = shift,
@@ -99,17 +150,21 @@ def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -
 
                     assignments_created.append(assignment)
                     assigned_employee_ids.add(employee.id)
-                else:
-                    rejected_employees.append(
-                        {
-                            "employee_id": employee.id,
-                            "employee_name": f"{employee.first_name} {employee.last_name}",
-                            "contract_id": contract.id,
-                            "errors": errors,
-                        }
-                    )
+                    assigned_in_iteration = True
+                    break
 
-            employee_index = (employee_index + 1) % len(employees_with_contracts)
+                rejected_employees.append(
+                    {
+                        "employee_id": employee.id,
+                        "employee_name": f"{employee.first_name} {employee.last_name}",
+                        "contract_id": contract.id,
+                        "errors": errors,
+                    }
+                )
+
+            if not assigned_in_iteration:
+                break
+
             attempts += 1
 
         if len(assigned_employee_ids) < max_employees_per_shift:
