@@ -170,6 +170,45 @@ def validate_contract_weekly_hours(
     return errors
 
 
+def validate_contract_working_day(
+    contract: Contract,
+    start_datetime: datetime,
+) -> list[str]:
+    errors: list[str] = []
+
+    weekday = start_datetime.weekday()
+
+    allowed_by_day = {
+        0: contract.work_monday,
+        1: contract.work_tuesday,
+        2: contract.work_wednesday,
+        3: contract.work_thursday,
+        4: contract.work_friday,
+        5: contract.work_saturday,
+        6: contract.work_sunday,
+    }
+
+    if not allowed_by_day[weekday]:
+        errors.append("The employee cannot work on this day according to the active contract")
+
+    return errors
+
+
+def validate_contract_daily_hours(
+    contract: Contract,
+    start_datetime: datetime,
+    end_datetime: datetime,
+) -> list[str]:
+    errors: list[str] = []
+
+    shift_hours = (end_datetime - start_datetime).total_seconds() / 3600
+
+    if shift_hours > contract.daily_hours:
+        errors.append("The shift exceeds the daily hours allowed by the active contract")
+
+    return errors
+
+
 def get_assignment_errors(
     db: Session,
     shift: Shift,
@@ -191,6 +230,14 @@ def get_assignment_errors(
         validate_contract_working_day(
             contract = contract,
             start_datetime = shift.start_datetime,
+        )
+    )
+
+    errors.extend(
+        validate_contract_daily_hours(
+            contract = contract,
+            start_datetime = shift.start_datetime,
+            end_datetime = shift.end_datetime,
         )
     )
 
@@ -296,26 +343,3 @@ def get_employee_weekly_working_days(
 
     return {row[0].date() for row in working_days}
 
-
-def validate_contract_working_day(
-    contract: Contract,
-    start_datetime: datetime,
-) -> list[str]:
-    errors: list[str] = []
-
-    weekday = start_datetime.weekday()
-
-    allowed_by_day = {
-        0: contract.work_monday,
-        1: contract.work_tuesday,
-        2: contract.work_wednesday,
-        3: contract.work_thursday,
-        4: contract.work_friday,
-        5: contract.work_saturday,
-        6: contract.work_sunday,
-    }
-
-    if not allowed_by_day[weekday]:
-        errors.append("The employee cannot work on this day according to the active contract")
-
-    return errors
