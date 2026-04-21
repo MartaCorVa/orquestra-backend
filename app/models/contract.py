@@ -15,7 +15,6 @@ class Contract(Base):
     employee_id: Mapped[int] = mapped_column(
         ForeignKey("employee.id", ondelete = "CASCADE"),
         nullable = False,
-        unique = True,
     )
 
     weekly_hours: Mapped[int] = mapped_column(Integer, nullable = False)
