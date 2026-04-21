@@ -51,8 +51,7 @@ class ContractBase(BaseModel):
 
 
 class ContractCreate(ContractBase):
-    pass
-
+    employee_id: int
 
 class ContractUpdate(BaseModel):
     weekly_hours: int | None = None
