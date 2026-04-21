@@ -202,6 +202,10 @@ All shift operations (manual creation, update, and automatic planning) share the
 - No overlapping shifts for the same employee  
 - Minimum rest period of 12 hours between shifts  
 - Respect of maximum weekly working hours defined in the employee's active contract  
+- Respect of maximum daily working hours defined in the employee's active contract  
+- Respect of allowed working days defined in the employee's active contract  
+- Respect of minimum days off per week  
+- Optional fixed schedule constraints (start and end time windows)  
 
 Validation errors are aggregated and returned together to provide clear feedback.
 
@@ -212,24 +216,31 @@ Validation errors are aggregated and returned together to provide clear feedback
 ### 🔹 Planning
 
 - Automatic shift assignment algorithm  
-- Support for multiple employees per shift  
+- Minimum coverage per shift (at least one employee per shift)  
 - Prevention of duplicate assignments  
 
-- Validation-based assignment:
-  - No overlapping shifts per employee  
-  - Minimum rest period of 12 hours between shifts  
-- Respect of maximum weekly working hours defined in the employee's active contract  
-
-- Planning uses the active contract of each employee:
+- Contract-driven assignment:
   - Only employees with an active contract are considered  
-  - Contract rules determine availability and workload limits  
+  - Assignments must respect:
+    - allowed working days  
+    - maximum daily working hours  
+    - maximum weekly working hours  
+    - minimum rest period (12 hours)  
+    - minimum days off per week  
+    - optional fixed schedule constraints  
+
+- Priority-based assignment:
+  - Employees are prioritized based on:
+    - remaining weekly hours to fulfill  
+    - contract workload (full-time vs part-time)  
+    - number of already assigned working days  
 
 - Planning results include detailed feedback:
   - Successfully created assignments  
   - Shifts that could not be fully assigned  
   - Per-employee validation errors explaining why assignment was not possible  
 
-This ensures that planning is not only automatic, but also explainable and aligned with business rules.
+This ensures that planning is automatic, explainable, and aligned with real-world contract constraints.
 
 ### 🔹 Metrics
 
@@ -304,6 +315,13 @@ pytest
   - Multiple contracts per employee  
   - Active contract selection  
   - Planning driven by contract constraints  
+- Contract-aware planning with advanced constraints:
+  - Working day validation  
+  - Daily and weekly hour limits  
+  - Minimum rest enforcement  
+  - Minimum days off enforcement  
+  - Optional fixed schedule validation  
+- Priority-based assignment to maximize contract hour fulfillment  
 
 --- 
 
@@ -325,3 +343,5 @@ Contract management is decoupled from employee management:
 - Contracts are handled as independent resources  
 - This allows tracking contract history and changes over time  
 - Planning logic relies on the active contract, improving flexibility and scalability  
+
+The planning algorithm prioritizes fulfilling contract hours while respecting all scheduling constraints, providing a balance between fairness and feasibility.
