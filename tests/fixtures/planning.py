@@ -2,6 +2,7 @@ from datetime import date, datetime
 
 import pytest
 
+from app.models.contract import Contract
 from app.models.employee import Employee
 from app.models.schedule import Schedule
 from app.models.shift import Shift
@@ -29,7 +30,6 @@ def active_employees(db):
             first_name = "Marta",
             last_name = "Lopez",
             phone_number = "111111111",
-            max_weekly_hours = 40,
             active = True,
             user_id = None,
         ),
@@ -37,7 +37,6 @@ def active_employees(db):
             first_name = "Juan",
             last_name = "Perez",
             phone_number = "222222222",
-            max_weekly_hours = 40,
             active = True,
             user_id = None,
         ),
@@ -45,7 +44,6 @@ def active_employees(db):
             first_name = "Ana",
             last_name = "Garcia",
             phone_number = "333333333",
-            max_weekly_hours = 40,
             active = True,
             user_id = None,
         ),
@@ -56,6 +54,69 @@ def active_employees(db):
 
     for employee in employees:
         db.refresh(employee)
+
+    contracts = [
+        Contract(
+            employee_id = employees[0].id,
+            weekly_hours = 40,
+            daily_hours = 12,
+            min_days_off_per_week = 0,
+            work_monday = True,
+            work_tuesday = True,
+            work_wednesday = True,
+            work_thursday = True,
+            work_friday = True,
+            work_saturday = True,
+            work_sunday = True,
+            has_fixed_schedule = False,
+            preferred_start_time = None,
+            preferred_end_time = None,
+            active = True,
+            start_date = date(2026, 1, 1),
+            end_date = None,
+        ),
+        Contract(
+            employee_id = employees[1].id,
+            weekly_hours = 40,
+            daily_hours = 12,
+            min_days_off_per_week = 0,
+            work_monday = True,
+            work_tuesday = True,
+            work_wednesday = True,
+            work_thursday = True,
+            work_friday = True,
+            work_saturday = True,
+            work_sunday = True,
+            has_fixed_schedule = False,
+            preferred_start_time = None,
+            preferred_end_time = None,
+            active = True,
+            start_date = date(2026, 1, 1),
+            end_date = None,
+        ),
+        Contract(
+            employee_id = employees[2].id,
+            weekly_hours = 40,
+            daily_hours = 12,
+            min_days_off_per_week = 0,
+            work_monday = True,
+            work_tuesday = True,
+            work_wednesday = True,
+            work_thursday = True,
+            work_friday = True,
+            work_saturday = True,
+            work_sunday = True,
+            has_fixed_schedule = False,
+            preferred_start_time = None,
+            preferred_end_time = None,
+            active = True,
+            start_date = date(2026, 1, 1),
+            end_date = None,
+        ),
+    ]
+
+    db.add_all(contracts)
+    db.commit()
 
     return employees
 
