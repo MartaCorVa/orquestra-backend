@@ -1,5 +1,7 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 
+from app.schemas.contract import ContractCreateOnboarding, ContractResponse
+
 
 class EmployeeOnboardingCreate(BaseModel):
     email: EmailStr
@@ -8,8 +10,8 @@ class EmployeeOnboardingCreate(BaseModel):
     first_name: str
     last_name: str
     phone_number: str | None = None
-    max_weekly_hours: int
     active: bool = True
+    contract: ContractCreateOnboarding
 
 
 class EmployeeOnboardingResponse(BaseModel):
@@ -21,6 +23,6 @@ class EmployeeOnboardingResponse(BaseModel):
     first_name: str
     last_name: str
     phone_number: str | None = None
-    max_weekly_hours: int
     active: bool
+    contract: ContractResponse
     model_config = ConfigDict(from_attributes = True)
