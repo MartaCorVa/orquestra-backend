@@ -1,12 +1,13 @@
+from datetime import date, time
+
 from pydantic import BaseModel
 
-from datetime import date, time
 
 class EmployeeFairnessMetric(BaseModel):
     employee_id: int
     employee_name: str
     assigned_hours: float
-    max_weekly_hours: int
+    contract_weekly_hours: int
     workload_percentage: float
 
 
@@ -17,13 +18,16 @@ class ScheduleFairnessResponse(BaseModel):
     max_assigned_hours: float
     min_assigned_hours: float
     hours_gap: float
+    max_workload_percentage: float
+    min_workload_percentage: float
+    workload_percentage_gap: float
 
 
 class EmployeeWorkloadMetric(BaseModel):
     employee_id: int
     employee_name: str
     assigned_hours: float
-    max_weekly_hours: int
+    contract_weekly_hours: int
     workload_percentage: float
 
 
@@ -47,6 +51,7 @@ class RecentScheduleShiftResponse(BaseModel):
     end_time: time
     status: str
     number_of_employees: int
+
 
 class RecentScheduleResponse(BaseModel):
     id: int
