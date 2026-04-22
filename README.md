@@ -237,10 +237,20 @@ Validation errors are aggregated and returned together to provide clear feedback
 
 - Planning results include detailed feedback:
   - Successfully created assignments  
-  - Shifts that could not be fully assigned  
-  - Per-employee validation errors explaining why assignment was not possible  
+  - Shifts that could not be assigned (minimum coverage not met)  
+  - Employees below their contract target hours  
+  - Total missing contract hours required to fulfill all contracts  
+  - Per-employee validation errors explaining why assignment was not possible
 
 This ensures that planning is automatic, explainable, and aligned with real-world contract constraints.
+
+Additionally, the planning system does not rely on a fixed number of employees per shift.
+
+- Each shift is covered by at least one employee when possible  
+- Additional assignments are created only if they help fulfill weekly contract hours  
+- If available shifts are insufficient, the system reports the missing hours required  
+
+This approach makes planning contract-hour driven rather than fixed-staffing driven.
 
 ### 🔹 Metrics
 
@@ -301,10 +311,12 @@ pytest
 - JWT authentication and role-based authorization
 - Employee onboarding (user + employee creation in one step)
 - First login password change flow
-- Automatic shift planning with constraint validation:
+- Automatic shift planning with contract-hour-driven allocation:
+  - Minimum one employee per shift  
+  - Additional assignments based on remaining contract hours  
   - No overlapping shifts  
   - Minimum rest period enforcement  
-  - Weekly hour limits per employee  
+  - Daily and weekly hour limits per employee  
 - Explainable planning results (assignment success and failure reasons)  
 - Workload and fairness metrics
 - Role-based data filtering in API responses
@@ -321,7 +333,11 @@ pytest
   - Minimum rest enforcement  
   - Minimum days off enforcement  
   - Optional fixed schedule validation  
-- Priority-based assignment to maximize contract hour fulfillment  
+- Priority-based assignment to maximize contract hour fulfillment
+- Planning feedback with contract fulfillment insights:
+  - Employees below target hours  
+  - Total missing contract hours  
+  - Guidance for creating additional shifts
 
 --- 
 
