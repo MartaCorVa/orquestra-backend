@@ -54,7 +54,7 @@ class ContractCreate(ContractBase):
     employee_id: int
 
 
-class ContractCreateOnboarding(BaseModel):
+class ContractCreateOnboarding(ContractBase):
     weekly_hours: int
     daily_hours: int
     min_days_off_per_week: int
