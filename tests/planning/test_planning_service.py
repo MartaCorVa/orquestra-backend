@@ -9,41 +9,44 @@ def test_generate_schedule_creates_assignments(db, test_schedule, active_employe
     result = generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 1,
     )
 
-    assert len(result["assignments_created"]) == 2
+    assert len(result["assignments_created"]) >= 2
     assert result["unfilled_shifts"] == []
+    assert "employees_below_target" in result
+    assert "missing_contract_hours_total" in result
 
     stored_assignments = db.query(Assignment).all()
-    assert len(stored_assignments) == 2
+    assert len(stored_assignments) >= 2
 
 
 def test_generate_schedule_returns_empty_when_no_employees(db, test_schedule, test_shifts):
     result = generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 1,
     )
 
     assert result["assignments_created"] == []
     assert result["unfilled_shifts"] == []
-    assert result["message"] == "No employees or shifts available for planning"
+    assert result["employees_below_target"] == []
+    assert result["missing_contract_hours_total"] == 0.0
+    assert result["message"] == "No employees with active contracts or shifts available for planning"
 
 
 def test_generate_schedule_returns_empty_when_no_shifts(db, test_schedule, active_employees):
     result = generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 1,
     )
 
     assert result["assignments_created"] == []
     assert result["unfilled_shifts"] == []
-    assert result["message"] == "No employees or shifts available for planning"
+    assert result["employees_below_target"] == []
+    assert result["missing_contract_hours_total"] == 0.0
+    assert result["message"] == "No employees with active contracts or shifts available for planning"
 
 
-def test_generate_schedule_respects_employees_per_shift(db, test_schedule, active_employees):
+def test_generate_schedule_creates_minimum_one_assignment_per_shift(db, test_schedule, active_employees):
     shifts = [
         Shift(
             start_datetime = datetime(2026, 3, 1, 9, 0),
@@ -70,35 +73,33 @@ def test_generate_schedule_respects_employees_per_shift(db, test_schedule, activ
     result = generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 2,
     )
 
-    assert len(result["assignments_created"]) == 4
+    assert len(result["assignments_created"]) >= 2
     assert result["unfilled_shifts"] == []
 
     for shift in shifts:
         shift_assignments = db.query(Assignment).filter(Assignment.shift_id == shift.id).all()
-        assert len(shift_assignments) == 2
+        assert len(shift_assignments) >= 1
 
 
 def test_generate_schedule_does_not_create_duplicate_assignments(db, test_schedule, active_employees, test_shifts):
     generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 1,
     )
 
     second_run = generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 1,
     )
 
     assert second_run["assignments_created"] == []
-    assert second_run["unfilled_shifts"] == []
 
     stored_assignments = db.query(Assignment).all()
-    assert len(stored_assignments) == 2
+    assignment_pairs = {(assignment.employee_id, assignment.shift_id) for assignment in stored_assignments}
+
+    assert len(assignment_pairs) == len(stored_assignments)
 
 
 def test_generate_schedule_avoids_overlapping_assignments(db, test_schedule, active_employees):
@@ -128,14 +129,17 @@ def test_generate_schedule_avoids_overlapping_assignments(db, test_schedule, act
     result = generate_schedule(
         db = db,
         schedule_id = test_schedule.id,
-        employees_per_shift = 1,
     )
 
-    assert len(result["assignments_created"]) == 2
+    assert len(result["assignments_created"]) >= 2
 
-    first_shift_assignment = db.query(Assignment).filter(Assignment.shift_id == overlapping_shifts[0].id).first()
-    second_shift_assignment = db.query(Assignment).filter(Assignment.shift_id == overlapping_shifts[1].id).first()
+    first_shift_assignments = db.query(Assignment).filter(Assignment.shift_id == overlapping_shifts[0].id).all()
+    second_shift_assignments = db.query(Assignment).filter(Assignment.shift_id == overlapping_shifts[1].id).all()
 
-    assert first_shift_assignment is not None
-    assert second_shift_assignment is not None
-    assert first_shift_assignment.employee_id != second_shift_assignment.employee_id
+    assert len(first_shift_assignments) >= 1
+    assert len(second_shift_assignments) >= 1
+
+    first_shift_employee_ids = {assignment.employee_id for assignment in first_shift_assignments}
+    second_shift_employee_ids = {assignment.employee_id for assignment in second_shift_assignments}
+
+    assert first_shift_employee_ids.isdisjoint(second_shift_employee_ids)
