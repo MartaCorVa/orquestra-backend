@@ -53,6 +53,29 @@ class ContractBase(BaseModel):
 class ContractCreate(ContractBase):
     employee_id: int
 
+
+class ContractCreateOnboarding(BaseModel):
+    weekly_hours: int
+    daily_hours: int
+    min_days_off_per_week: int
+
+    work_monday: bool
+    work_tuesday: bool
+    work_wednesday: bool
+    work_thursday: bool
+    work_friday: bool
+    work_saturday: bool
+    work_sunday: bool
+
+    has_fixed_schedule: bool
+    preferred_start_time: time | None = None
+    preferred_end_time: time | None = None
+
+    active: bool
+    start_date: date
+    end_date: date | None = None
+
+
 class ContractUpdate(BaseModel):
     weekly_hours: int | None = None
     daily_hours: int | None = None
