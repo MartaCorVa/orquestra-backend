@@ -1,8 +1,9 @@
+from app.models.contract import Contract
 from app.models.employee import Employee
 from app.models.user import User
 
 
-def test_employee_onboarding_creates_user_and_employee(client, auth_headers, db):
+def test_employee_onboarding_creates_user_employee_and_contract(client, auth_headers, db):
     response = client.post(
         "/employees/onboarding",
         json = {
@@ -12,8 +13,25 @@ def test_employee_onboarding_creates_user_and_employee(client, auth_headers, db)
             "first_name": "Laura",
             "last_name": "Martin",
             "phone_number": "600111222",
-            "max_weekly_hours": 40,
-            "active": True
+            "active": True,
+            "contract": {
+                "weekly_hours": 40,
+                "daily_hours": 8,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": True,
+                "preferred_start_time": "08:00:00",
+                "preferred_end_time": "16:00:00",
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
         },
         headers = auth_headers
     )
@@ -27,17 +45,33 @@ def test_employee_onboarding_creates_user_and_employee(client, auth_headers, db)
     assert response_data["must_change_password"] is True
     assert response_data["first_name"] == "Laura"
     assert response_data["last_name"] == "Martin"
-    assert response_data["max_weekly_hours"] == 40
+    assert response_data["phone_number"] == "600111222"
+    assert response_data["active"] is True
     assert "user_id" in response_data
     assert "employee_id" in response_data
+    assert "contract" in response_data
+
+    assert response_data["contract"]["weekly_hours"] == 40
+    assert response_data["contract"]["daily_hours"] == 8
+    assert response_data["contract"]["min_days_off_per_week"] == 2
+    assert response_data["contract"]["employee_id"] == response_data["employee_id"]
+    assert response_data["contract"]["active"] is True
+    assert response_data["contract"]["has_fixed_schedule"] is True
+    assert response_data["contract"]["preferred_start_time"] == "08:00:00"
+    assert response_data["contract"]["preferred_end_time"] == "16:00:00"
 
     created_user = db.query(User).filter(User.email == "new.employee@example.com").first()
     created_employee = db.query(Employee).filter(Employee.id == response_data["employee_id"]).first()
+    created_contract = db.query(Contract).filter(Contract.employee_id == response_data["employee_id"]).first()
 
     assert created_user is not None
     assert created_employee is not None
+    assert created_contract is not None
     assert created_employee.user_id == created_user.id
     assert created_user.must_change_password is True
+    assert created_contract.weekly_hours == 40
+    assert created_contract.daily_hours == 8
+    assert created_contract.active is True
 
 
 def test_employee_onboarding_fails_with_duplicate_email(client, auth_headers, test_user):
@@ -50,8 +84,25 @@ def test_employee_onboarding_fails_with_duplicate_email(client, auth_headers, te
             "first_name": "Laura",
             "last_name": "Martin",
             "phone_number": "600111222",
-            "max_weekly_hours": 40,
-            "active": True
+            "active": True,
+            "contract": {
+                "weekly_hours": 40,
+                "daily_hours": 8,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": True,
+                "preferred_start_time": "08:00:00",
+                "preferred_end_time": "16:00:00",
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
         },
         headers = auth_headers
     )
@@ -70,8 +121,25 @@ def test_login_returns_must_change_password_for_onboarded_user(client, auth_head
             "first_name": "Mario",
             "last_name": "Sanchez",
             "phone_number": "600333444",
-            "max_weekly_hours": 35,
-            "active": True
+            "active": True,
+            "contract": {
+                "weekly_hours": 35,
+                "daily_hours": 7,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": False,
+                "preferred_start_time": None,
+                "preferred_end_time": None,
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
         },
         headers = auth_headers
     )
@@ -105,8 +173,25 @@ def test_change_password_updates_flag_and_allows_new_login(client, auth_headers,
             "first_name": "Lucia",
             "last_name": "Ruiz",
             "phone_number": "600555666",
-            "max_weekly_hours": 30,
-            "active": True
+            "active": True,
+            "contract": {
+                "weekly_hours": 30,
+                "daily_hours": 6,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": False,
+                "preferred_start_time": None,
+                "preferred_end_time": None,
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
         },
         headers = auth_headers
     )
@@ -166,8 +251,25 @@ def test_change_password_fails_with_incorrect_current_password(client, auth_head
             "first_name": "Raul",
             "last_name": "Diaz",
             "phone_number": "600777888",
-            "max_weekly_hours": 40,
-            "active": True
+            "active": True,
+            "contract": {
+                "weekly_hours": 40,
+                "daily_hours": 8,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": True,
+                "preferred_start_time": "08:00:00",
+                "preferred_end_time": "16:00:00",
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
         },
         headers = auth_headers
     )
@@ -211,8 +313,25 @@ def test_change_password_fails_when_new_password_matches_current_password(client
             "first_name": "Elena",
             "last_name": "Gil",
             "phone_number": "600999000",
-            "max_weekly_hours": 40,
-            "active": True
+            "active": True,
+            "contract": {
+                "weekly_hours": 40,
+                "daily_hours": 8,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": True,
+                "preferred_start_time": "08:00:00",
+                "preferred_end_time": "16:00:00",
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
         },
         headers = auth_headers
     )
@@ -244,3 +363,84 @@ def test_change_password_fails_when_new_password_matches_current_password(client
 
     assert change_password_response.status_code == 400
     assert change_password_response.json()["detail"] == "New password must be different from the current password"
+
+
+def test_employee_onboarding_creates_active_contract(client, auth_headers, db):
+    response = client.post(
+        "/employees/onboarding",
+        json = {
+            "email": "contract.check@example.com",
+            "password": "temporary123",
+            "role": "employee",
+            "first_name": "Laura",
+            "last_name": "Martin",
+            "phone_number": "600111222",
+            "active": True,
+            "contract": {
+                "weekly_hours": 40,
+                "daily_hours": 8,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": True,
+                "preferred_start_time": "08:00:00",
+                "preferred_end_time": "16:00:00",
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
+        },
+        headers = auth_headers
+    )
+
+    assert response.status_code == 201
+
+    response_data = response.json()
+
+    created_contract = db.query(Contract).filter(Contract.employee_id == response_data["employee_id"]).first()
+
+    assert created_contract is not None
+    assert created_contract.active is True
+    assert created_contract.weekly_hours == 40
+    assert created_contract.daily_hours == 8
+
+
+def test_employee_onboarding_fails_with_invalid_contract(client, auth_headers):
+    response = client.post(
+        "/employees/onboarding",
+        json = {
+            "email": "invalid.contract@example.com",
+            "password": "temporary123",
+            "role": "employee",
+            "first_name": "Invalid",
+            "last_name": "Contract",
+            "phone_number": "600111222",
+            "active": True,
+            "contract": {
+                "weekly_hours": 40,
+                "daily_hours": 8,
+                "min_days_off_per_week": 2,
+                "work_monday": True,
+                "work_tuesday": True,
+                "work_wednesday": True,
+                "work_thursday": True,
+                "work_friday": True,
+                "work_saturday": False,
+                "work_sunday": False,
+                "has_fixed_schedule": True,
+                "preferred_start_time": None,
+                "preferred_end_time": None,
+                "active": True,
+                "start_date": "2026-04-01",
+                "end_date": None
+            }
+        },
+        headers = auth_headers
+    )
+
+    assert response.status_code == 422
