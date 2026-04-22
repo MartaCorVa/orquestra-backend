@@ -52,7 +52,41 @@ def get_candidate_priority(
     )
 
 
-def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -> dict[str, Any]:
+def get_employees_below_target(
+    db: Session,
+    employees_with_contracts: list[tuple[Employee, Contract]],
+    reference_shift: Shift,
+) -> tuple[list[dict[str, Any]], float]:
+    employees_below_target: list[dict[str, Any]] = []
+    missing_contract_hours_total = 0.0
+
+    for employee, contract in employees_with_contracts:
+        assigned_hours = get_employee_weekly_assigned_hours(
+            db = db,
+            employee_id = employee.id,
+            reference_datetime = reference_shift.start_datetime,
+        )
+
+        missing_hours = max(0.0, contract.weekly_hours - assigned_hours)
+
+        if missing_hours > 0:
+            employees_below_target.append(
+                {
+                    "employee_id": employee.id,
+                    "employee_name": f"{employee.first_name} {employee.last_name}",
+                    "contract_id": contract.id,
+                    "contract_hours": contract.weekly_hours,
+                    "assigned_hours": assigned_hours,
+                    "missing_hours": missing_hours,
+                }
+            )
+
+            missing_contract_hours_total += missing_hours
+
+    return employees_below_target, missing_contract_hours_total
+
+
+def generate_schedule(db: Session, schedule_id: int) -> dict[str, Any]:
     validate_schedule_exists(db = db, schedule_id = schedule_id)
 
     all_employees = (
@@ -77,23 +111,17 @@ def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -
         .all()
     )
 
-    if employees_per_shift <= 0:
-        return {
-            "assignments_created": [],
-            "unfilled_shifts": [],
-            "message": "Employees per shift must be greater than 0",
-        }
-
     if not employees_with_contracts or not shifts:
         return {
             "assignments_created": [],
             "unfilled_shifts": [],
+            "employees_below_target": [],
+            "missing_contract_hours_total": 0.0,
             "message": "No employees with active contracts or shifts available for planning",
         }
 
     assignments_created: list[Assignment] = []
     unfilled_shifts: list[dict[str, Any]] = []
-    max_employees_per_shift = min(employees_per_shift, len(employees_with_contracts))
 
     for shift in shifts:
         existing_assignments = (
@@ -103,94 +131,149 @@ def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -
         )
         assigned_employee_ids = {assignment.employee_id for assignment in existing_assignments}
 
+        if len(assigned_employee_ids) >= 1:
+            continue
+
         rejected_employees: list[dict[str, Any]] = []
-        attempts = 0
-        max_attempts = len(employees_with_contracts) * 2
 
-        while len(assigned_employee_ids) < max_employees_per_shift and attempts < max_attempts:
-            candidate_pool: list[tuple[Employee, Contract]] = []
+        candidate_pool = [
+            (employee, contract)
+            for employee, contract in employees_with_contracts
+            if employee.id not in assigned_employee_ids
+        ]
 
-            for employee, contract in employees_with_contracts:
-                if employee.id in assigned_employee_ids:
-                    continue
+        candidate_pool.sort(
+            key = lambda candidate: get_candidate_priority(
+                db = db,
+                employee = candidate[0],
+                contract = candidate[1],
+                shift = shift,
+            ),
+            reverse = True,
+        )
 
-                candidate_pool.append((employee, contract))
+        assigned = False
 
-            if not candidate_pool:
-                break
-
-            candidate_pool.sort(
-                key = lambda candidate: get_candidate_priority(
-                    db = db,
-                    employee = candidate[0],
-                    contract = candidate[1],
-                    shift = shift,
-                ),
-                reverse = True,
+        for employee, contract in candidate_pool:
+            errors = get_assignment_errors(
+                db = db,
+                shift = shift,
+                employee = employee,
+                contract = contract,
             )
 
-            assigned_in_iteration = False
-
-            for employee, contract in candidate_pool:
-                errors = get_assignment_errors(
-                    db = db,
-                    shift = shift,
-                    employee = employee,
-                    contract = contract,
+            if not errors:
+                assignment = Assignment(
+                    employee_id = employee.id,
+                    shift_id = shift.id,
                 )
 
-                if not errors:
-                    assignment = Assignment(
-                        employee_id = employee.id,
-                        shift_id = shift.id,
-                    )
+                db.add(assignment)
+                db.flush()
 
-                    db.add(assignment)
-                    db.flush()
-
-                    assignments_created.append(assignment)
-                    assigned_employee_ids.add(employee.id)
-                    assigned_in_iteration = True
-                    break
-
-                rejected_employees.append(
-                    {
-                        "employee_id": employee.id,
-                        "employee_name": f"{employee.first_name} {employee.last_name}",
-                        "contract_id": contract.id,
-                        "errors": errors,
-                    }
-                )
-
-            if not assigned_in_iteration:
+                assignments_created.append(assignment)
+                assigned_employee_ids.add(employee.id)
+                assigned = True
                 break
 
-            attempts += 1
+            rejected_employees.append(
+                {
+                    "employee_id": employee.id,
+                    "employee_name": f"{employee.first_name} {employee.last_name}",
+                    "contract_id": contract.id,
+                    "errors": errors,
+                }
+            )
 
-        if len(assigned_employee_ids) < max_employees_per_shift:
-            missing_employees = max_employees_per_shift - len(assigned_employee_ids)
-
-            unique_rejected_employees: list[dict[str, Any]] = []
-            seen_employee_ids: set[int] = set()
-
-            for rejected_employee in rejected_employees:
-                if rejected_employee["employee_id"] not in seen_employee_ids:
-                    unique_rejected_employees.append(rejected_employee)
-                    seen_employee_ids.add(rejected_employee["employee_id"])
-
+        if not assigned:
             unfilled_shifts.append(
                 {
                     "shift_id": shift.id,
                     "start_datetime": shift.start_datetime,
                     "end_datetime": shift.end_datetime,
-                    "required_employees": max_employees_per_shift,
-                    "assigned_employees": len(assigned_employee_ids),
-                    "missing_employees": missing_employees,
-                    "rejected_employees": unique_rejected_employees,
+                    "required_employees": 1,
+                    "assigned_employees": 0,
+                    "missing_employees": 1,
+                    "rejected_employees": rejected_employees,
                 }
             )
 
+    for shift in shifts:
+        existing_assignments = (
+            db.query(Assignment)
+            .filter(Assignment.shift_id == shift.id)
+            .all()
+        )
+        assigned_employee_ids = {assignment.employee_id for assignment in existing_assignments}
+
+        candidate_pool = []
+
+        for employee, contract in employees_with_contracts:
+            if employee.id in assigned_employee_ids:
+                continue
+
+            assigned_hours = get_employee_weekly_assigned_hours(
+                db = db,
+                employee_id = employee.id,
+                reference_datetime = shift.start_datetime,
+            )
+
+            remaining_hours = contract.weekly_hours - assigned_hours
+
+            if remaining_hours <= 0:
+                continue
+
+            candidate_pool.append((employee, contract))
+
+        candidate_pool.sort(
+            key = lambda candidate: get_candidate_priority(
+                db = db,
+                employee = candidate[0],
+                contract = candidate[1],
+                shift = shift,
+            ),
+            reverse = True,
+        )
+
+        for employee, contract in candidate_pool:
+            errors = get_assignment_errors(
+                db = db,
+                shift = shift,
+                employee = employee,
+                contract = contract,
+            )
+
+            if errors:
+                continue
+
+            assignment = Assignment(
+                employee_id = employee.id,
+                shift_id = shift.id,
+            )
+
+            db.add(assignment)
+            db.flush()
+
+            assignments_created.append(assignment)
+            assigned_employee_ids.add(employee.id)
+
     db.commit()
+
+    reference_shift = shifts[0]
+    employees_below_target, missing_contract_hours_total = get_employees_below_target(
+        db = db,
+        employees_with_contracts = employees_with_contracts,
+        reference_shift = reference_shift,
+    )
+
+    if missing_contract_hours_total > 0:
+        message = (
+            "Planning generated successfully. "
+            f"Additional shifts covering {missing_contract_hours_total} hours are needed "
+            "to fulfill all active contract hours before regenerating planning."
+        )
+    else:
+        message = "Planning generated successfully and all active contract hours were fulfilled"
 
     return {
         "assignments_created": [
@@ -201,5 +284,7 @@ def generate_schedule(db: Session, schedule_id: int, employees_per_shift: int) -
             for assignment in assignments_created
         ],
         "unfilled_shifts": unfilled_shifts,
-        "message": "Planning generated successfully using active contracts",
+        "employees_below_target": employees_below_target,
+        "missing_contract_hours_total": missing_contract_hours_total,
+        "message": message,
     }
