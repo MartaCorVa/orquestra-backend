@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
-from app.models.contract import Contract
 from app.models.employee import Employee
 from app.models.user import User
 from app.schemas.employee import EmployeeCreate, EmployeeResponse, EmployeeUpdate
@@ -65,7 +64,8 @@ def onboard_employee(
         "first_name": result["employee"].first_name,
         "last_name": result["employee"].last_name,
         "phone_number": result["employee"].phone_number,
-        "active": result["employee"].active
+        "active": result["employee"].active,
+        "contract": result["contract"]
     }
 
 
