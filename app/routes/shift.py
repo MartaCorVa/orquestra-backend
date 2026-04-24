@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,7 +9,13 @@ from app.models.assignment import Assignment
 from app.models.employee import Employee
 from app.models.shift import Shift
 from app.models.user import User
-from app.schemas.shift import ShiftCreate, ShiftResponse, ShiftTableResponse, ShiftUpdate
+from app.schemas.shift import (
+    RecurrentShiftCreate,
+    ShiftCreate,
+    ShiftResponse,
+    ShiftTableResponse,
+    ShiftUpdate,
+)
 from app.services.shift_service import (
     create_shift_with_optional_assignment,
     update_shift_with_optional_assignment,
@@ -135,6 +143,70 @@ def get_shifts_table(
             employee_name = row.employee_name,
         )
         for row in rows
+    ]
+
+
+@router.post("/recurrent", response_model = list[ShiftResponse], status_code = status.HTTP_201_CREATED)
+def create_recurrent_shifts(
+    payload: RecurrentShiftCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user)
+):
+    if payload.start_date > payload.end_date:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = "Start date cannot be later than end date"
+        )
+
+    if payload.start_time >= payload.end_time:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = "End time must be later than start time"
+        )
+
+    weekday_map = {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6
+    }
+
+    selected_weekdays = {weekday_map[weekday] for weekday in payload.weekdays}
+
+    created_shifts: list[Shift] = []
+    current_date = payload.start_date
+
+    while current_date <= payload.end_date:
+        if current_date.weekday() in selected_weekdays:
+            start_datetime = datetime.combine(current_date, payload.start_time)
+            end_datetime = datetime.combine(current_date, payload.end_time)
+
+            new_shift = create_shift_with_optional_assignment(
+                db = db,
+                start_datetime = start_datetime,
+                end_datetime = end_datetime,
+                creation_type = payload.creation_type,
+                status_value = payload.status,
+                schedule_id = payload.schedule_id,
+                employee_id = payload.employee_id
+            )
+
+            created_shifts.append(new_shift)
+
+        current_date += timedelta(days = 1)
+
+    if not created_shifts:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = "No shifts were created because no selected weekdays match the date range"
+        )
+
+    return [
+        build_shift_response(db = db, shift = shift)
+        for shift in created_shifts
     ]
 
 
