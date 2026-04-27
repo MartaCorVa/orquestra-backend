@@ -82,6 +82,38 @@ def get_employee_contracts(
     )
 
 
+@router.get("/employee/{employee_id}/active", response_model = ContractResponse)
+def get_active_contract(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_active_user)
+):
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+
+    if not employee:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = "Employee not found"
+        )
+
+    contract = (
+        db.query(Contract)
+        .filter(
+            Contract.employee_id == employee_id,
+            Contract.active == True
+        )
+        .first()
+    )
+
+    if not contract:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = "Active contract not found"
+        )
+
+    return contract
+
+
 @router.patch("/{contract_id}/activate", response_model = ContractResponse)
 def activate_contract(
     contract_id: int,
