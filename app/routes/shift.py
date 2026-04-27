@@ -17,6 +17,7 @@ from app.schemas.shift import (
     ShiftTableResponse,
     ShiftUpdate,
 )
+from app.services.assignment_validation_service import get_assignment_errors
 from app.services.shift_service import (
     create_shift_with_optional_assignment,
     update_shift_with_optional_assignment,
@@ -270,14 +271,30 @@ def create_recurrent_shifts(
                         )
                         .first()
                     )
-
+            
                     if existing_assignment is None:
+                        assignment_errors = get_assignment_errors(
+                            db = db,
+                            shift = existing_shift,
+                            employee = employee,
+                            contract = active_contract
+                        )
+            
+                        if assignment_errors:
+                            raise HTTPException(
+                                status_code = status.HTTP_400_BAD_REQUEST,
+                                detail = {
+                                    "message": "Shift validation failed",
+                                    "errors": assignment_errors
+                                },
+                            )
+            
                         assignment = Assignment(
-                            shift_id = existing_shift.id,
-                            employee_id = payload.employee_id
+                            shift_id=existing_shift.id,
+                            employee_id=payload.employee_id,
                         )
                         db.add(assignment)
-
+            
                 affected_shifts.append(existing_shift)
             else:
                 new_shift = create_shift_with_optional_assignment(

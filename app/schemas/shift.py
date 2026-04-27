@@ -80,3 +80,13 @@ class RecurrentShiftCreate(BaseModel):
     creation_type: str = "manual"
     status: str = "planned"
     employee_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_recurrent_shift(self):
+       if self.end_date < self.start_date:
+           raise ValueError("End date must be later than or equal to start date")
+    
+       if self.end_time <= self.start_time:
+           raise ValueError("End time must be later than start time")
+    
+       return self
