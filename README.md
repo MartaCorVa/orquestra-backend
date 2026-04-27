@@ -193,6 +193,53 @@ Shifts are defined using precise datetime intervals, allowing support for overni
 - Optional employee assignment at creation time
 - Ability to assign, reassign, or remove employees from shifts
 
+### Recurrent shift creation
+
+The system supports creating shifts in bulk using a date range and selected weekdays.
+
+#### Features
+
+- Create multiple shifts across a date range
+- Select specific weekdays (e.g., Monday to Friday)
+- Define a common time range for all generated shifts
+- Optionally assign an employee to all generated shifts
+
+#### Behavior
+
+- For each matching day in the selected range:
+  - If no shift exists → a new shift is created
+  - If a shift already exists:
+    - no duplicate shift is created
+    - the employee is assigned to the existing shift (if provided)
+
+- Duplicate assignments are prevented:
+  - the same employee will not be assigned twice to the same shift
+
+#### Validation
+
+- Start date must be before end date
+- End time must be later than start time
+- At least one weekday must be selected
+- If an employee is provided:
+  - the employee must exist
+  - the employee must be active
+  - the employee must have an active contract
+  - assignment must respect all contract constraints:
+    - allowed working days  
+    - maximum daily working hours  
+    - maximum weekly working hours  
+    - minimum rest period (12 hours)  
+    - minimum days off per week  
+    - optional fixed schedule constraints  
+
+If any validation fails, the operation is rejected with detailed error messages.
+
+#### Example use cases
+
+- Create shifts Monday–Friday for a full month
+- Create shifts only on specific days (e.g., Tue–Thu)
+- Assign a single employee to a recurring pattern of shifts
+
 ### Validation rules
 
 All shift operations (manual creation, update, and automatic planning) share the same validation logic:
@@ -204,6 +251,7 @@ All shift operations (manual creation, update, and automatic planning) share the
 - Respect of maximum weekly working hours defined in the employee's active contract  
 - Respect of maximum daily working hours defined in the employee's active contract  
 - Respect of allowed working days defined in the employee's active contract  
+- Recurrent shift creation also validates contract working days before creating or assigning shifts
 - Respect of minimum days off per week  
 - Optional fixed schedule constraints (start and end time windows)  
 
@@ -338,6 +386,11 @@ pytest
   - Employees below target hours  
   - Total missing contract hours  
   - Guidance for creating additional shifts
+- Recurrent shift creation:
+  - Bulk creation of shifts across date ranges  
+  - Weekday-based generation  
+  - Automatic reuse of existing shifts  
+  - Contract-aware validation for employee assignments  
 
 --- 
 

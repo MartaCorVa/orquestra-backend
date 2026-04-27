@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime, time
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ShiftBase(BaseModel):
@@ -56,3 +57,36 @@ class ShiftTableResponse(BaseModel):
     creation_type: str
     employee_id: int | None = None
     employee_name: str | None = None    
+
+
+Weekday = Literal[
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday"
+]
+
+
+class RecurrentShiftCreate(BaseModel):
+    schedule_id: int
+    start_date: date
+    end_date: date
+    start_time: time
+    end_time: time
+    weekdays: list[Weekday] = Field(min_length=1)
+    creation_type: str = "manual"
+    status: str = "planned"
+    employee_id: int | None = None
+
+    @model_validator(mode="after")
+    def validate_recurrent_shift(self):
+       if self.end_date < self.start_date:
+           raise ValueError("End date must be later than or equal to start date")
+    
+       if self.end_time <= self.start_time:
+           raise ValueError("End time must be later than start time")
+    
+       return self
