@@ -1,0 +1,19 @@
+[run]
+source =
+    app
+    main.py
+
+omit =
+    tests/*
+    seed.py
+    init_db.py
+    app/models/base.py
+    app/**/__init__.py
+
+[report]
+omit =
+    tests/*
+    seed.py
+    init_db.py
+    app/models/base.py
+    app/**/__init__.py
