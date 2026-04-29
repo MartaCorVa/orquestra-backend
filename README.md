@@ -62,12 +62,23 @@ Initial data includes:
 
 ## ⚙️ Environment variables
 
-Configured using a `.env` file:
+Configuration is managed using a `.env` file.
 
-DATABASE_URL=postgresql://postgres:postgres@db:5432/orquestra_db  
-SECRET_KEY=your-secret-key  
-ALGORITHM=HS256  
-ACCESS_TOKEN_EXPIRE_MINUTES=30  
+You can use `.env.example` as a template.
+
+### Required variables
+
+```env
+DATABASE_URL=
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+SONAR_TOKEN=
+```
+
+### Notes
+- `.env` file is not included in the repository for security reasons
+- `.env.example` provides the required structure
+- `SONAR_TOKEN` is optional and only required for SonarQube analysis
 
 ---
 
@@ -347,6 +358,36 @@ pytest
 
 ---
 
+## 📊 Code Quality (SonarQube)
+
+The project includes static code analysis using **SonarQube**.
+
+### 🔹 Requirements
+
+- SonarQube running locally (default: http://localhost:9000)
+- A valid `SONAR_TOKEN`
+
+### 🔹 Generate coverage report
+
+```bash
+pytest --cov=app --cov=main --cov-report=xml --cov-report=term-missing --cov-config=.coveragerc
+```
+
+This generates the `coverage.xml` file required by SonarQube.
+
+### 🔹 Run analysis
+
+```bash
+sonar-scanner
+```
+
+### 🔹 Notes
+
+- The `coverage.xml` file is ignored in `.gitignore`
+- The analysis uses the configuration defined in `sonar-project.properties`
+
+---
+
 ## 📌 Current features
 
 - CRUD for all entities:
@@ -414,3 +455,9 @@ Contract management is decoupled from employee management:
 - Planning logic relies on the active contract, improving flexibility and scalability  
 
 The planning algorithm prioritizes fulfilling contract hours while respecting all scheduling constraints, providing a balance between fairness and feasibility.
+
+## 🔐 Security notes
+
+- Never commit `.env` files
+- Always use `.env.example` for sharing configuration
+- Keep secrets such as `SONAR_TOKEN` private
