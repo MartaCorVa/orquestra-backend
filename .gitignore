@@ -1,8 +1,18 @@
 venv/
-.env
 __pycache__/
 *.pyc
 .idea/
 .vscode/
 node_modules/
 dist/
+
+# SonarQube
+.scannerwork/
+
+# Coverage
+coverage.xml
+htmlcov/
+.coverage
+
+# Env
+.env
