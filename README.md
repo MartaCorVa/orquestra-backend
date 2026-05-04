@@ -72,6 +72,7 @@ You can use `.env.example` as a template.
 DATABASE_URL=
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+SECRET_KEY=
 SONAR_TOKEN=
 ```
 
