@@ -143,3 +143,100 @@ def test_generate_schedule_avoids_overlapping_assignments(db, test_schedule, act
     second_shift_employee_ids = {assignment.employee_id for assignment in second_shift_assignments}
 
     assert first_shift_employee_ids.isdisjoint(second_shift_employee_ids)
+
+
+def test_generate_schedule_creates_unfilled_shift_when_all_candidates_invalid(
+    db,
+    test_schedule,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "app.services.planning_service.get_assignment_errors",
+        lambda **kwargs: ["Employee cannot be assigned"],
+    )
+
+    result = generate_schedule(
+        db = db,
+        schedule_id = test_schedule.id,
+    )
+
+    assert result["assignments_created"] == []
+    assert len(result["unfilled_shifts"]) == len(test_shifts)
+    assert result["unfilled_shifts"][0]["missing_employees"] == 1
+    assert result["unfilled_shifts"][0]["rejected_employees"] != []
+
+
+def test_generate_schedule_message_when_missing_hours(
+    db,
+    test_schedule,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employees_below_target",
+        lambda **kwargs: ([{"employee_id": active_employees[0].id}], 10.0),
+    )
+
+    result = generate_schedule(
+        db = db,
+        schedule_id = test_schedule.id,
+    )
+
+    assert result["missing_contract_hours_total"] == 10.0
+    assert "Additional shifts covering 10.0 hours are needed" in result["message"]
+
+
+def test_generate_schedule_message_when_all_hours_fulfilled(
+    db,
+    test_schedule,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employees_below_target",
+        lambda **kwargs: ([], 0.0),
+    )
+
+    result = generate_schedule(
+        db = db,
+        schedule_id = test_schedule.id,
+    )
+
+    assert result["missing_contract_hours_total"] == 0.0
+    assert result["message"] == "Planning generated successfully and all active contract hours were fulfilled"
+
+
+def test_get_candidate_priority_returns_expected_tuple(
+    db,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import get_candidate_priority
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employee_weekly_assigned_hours",
+        lambda **kwargs: 10,
+    )
+
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employee_weekly_working_days",
+        lambda **kwargs: {shift.start_datetime.date()},
+    )
+
+    result = get_candidate_priority(
+        db = db,
+        employee = employee,
+        contract = contract,
+        shift = shift,
+    )
+
+    assert result == (30, 40, -1)

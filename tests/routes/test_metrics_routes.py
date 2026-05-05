@@ -174,3 +174,125 @@ def test_workload_uses_contract_valid_for_shift_date(client, metrics_employee_he
     assert data["employees"][0]["assigned_hours"] == 4.0
     assert data["employees"][0]["contract_weekly_hours"] == 20
     assert data["employees"][0]["workload_percentage"] == 20.0
+
+
+def test_summary_returns_metrics(client, metrics_data):
+    response = client.get("/metrics/summary")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "active_employees" in data
+    assert "weekly_shifts" in data
+    assert "schedules" in data
+    assert "pending_validations" in data
+
+
+def test_recent_schedule_returns_latest_schedule_for_admin(
+    client,
+    metrics_admin_headers,
+    metrics_data,
+):
+    response = client.get(
+        "/metrics/recent-schedule",
+        headers = metrics_admin_headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data is not None
+    assert "id" in data
+    assert "shifts" in data
+
+
+def test_recent_schedule_returns_schedule_for_employee(
+    client,
+    metrics_employee_headers,
+    metrics_data,
+):
+    response = client.get(
+        "/metrics/recent-schedule",
+        headers = metrics_employee_headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data is not None
+    assert "id" in data
+    assert "shifts" in data
+
+
+def test_recent_schedule_returns_none_when_employee_has_no_profile(
+    client,
+    employee_auth_headers,
+):
+    response = client.get(
+        "/metrics/recent-schedule",
+        headers = employee_auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_summary_counts_data(client, db, metrics_data):
+    response = client.get("/metrics/summary")
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["active_employees"] >= 1
+    assert isinstance(data["weekly_shifts"], int)
+    assert isinstance(data["schedules"], int)
+    assert isinstance(data["pending_validations"], int)
+
+
+def test_recent_schedule_returns_none_when_no_schedules(client, metrics_admin_headers):
+    response = client.get(
+        "/metrics/recent-schedule",
+        headers = metrics_admin_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_recent_schedule_employee_without_shifts_returns_none(
+    client,
+    metrics_employee_headers,
+    db,
+):
+    response = client.get(
+        "/metrics/recent-schedule",
+        headers = metrics_employee_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() is None
+
+
+def test_recent_schedule_contains_shift_data(
+    client,
+    metrics_admin_headers,
+    metrics_data,
+):
+    response = client.get(
+        "/metrics/recent-schedule",
+        headers = metrics_admin_headers,
+    )
+
+    data = response.json()
+
+    if data:
+        shift = data["shifts"][0]
+
+        assert "date" in shift
+        assert "start_time" in shift
+        assert "end_time" in shift
+        assert "status" in shift
+        assert "number_of_employees" in shift
