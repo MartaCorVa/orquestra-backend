@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -15,8 +17,8 @@ router = APIRouter(prefix = "/employees", tags = ["Employees"])
 @router.post("/", response_model = EmployeeResponse, status_code = status.HTTP_201_CREATED)
 def create_employee(
     employee: EmployeeCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     if employee.user_id is not None:
         user = db.query(User).filter(User.id == employee.user_id).first()
@@ -44,8 +46,8 @@ def create_employee(
 @router.post("/onboarding", response_model = EmployeeOnboardingResponse, status_code = status.HTTP_201_CREATED)
 def onboard_employee(
     payload: EmployeeOnboardingCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     try:
         result = create_employee_with_user(db, payload)
@@ -71,8 +73,8 @@ def onboard_employee(
 
 @router.get("/", response_model = list[EmployeeResponse])
 def get_employees(
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     return db.query(Employee).all()
 
@@ -80,8 +82,8 @@ def get_employees(
 @router.get("/{employee_id}", response_model = EmployeeResponse)
 def get_employee(
     employee_id: int, 
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
@@ -97,8 +99,8 @@ def get_employee(
 def update_employee(
     employee_id: int,
     employee_data: EmployeeUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
@@ -129,8 +131,8 @@ def update_employee(
 @router.delete("/{employee_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_employee(
     employee_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:

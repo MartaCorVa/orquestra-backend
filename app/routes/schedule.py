@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -16,8 +18,8 @@ router = APIRouter(prefix = "/schedules", tags = ["Schedules"])
 @router.post("/", response_model = ScheduleResponse, status_code = status.HTTP_201_CREATED)
 def create_schedule(
     schedule: ScheduleCreate, 
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     new_schedule = Schedule(
         start_date = schedule.start_date,
@@ -34,8 +36,8 @@ def create_schedule(
 
 @router.get("/", response_model=list[ScheduleResponse])
 def get_schedules(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     if current_user.role == "admin":
         schedules = db.query(Schedule).all()
@@ -60,8 +62,8 @@ def get_schedules(
 @router.get("/{schedule_id}", response_model=ScheduleDetailResponse)
 def get_schedule_by_id(
     schedule_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
@@ -158,8 +160,8 @@ def get_schedule_by_id(
 def update_schedule(
     schedule_id: int,
     schedule_data: ScheduleUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
@@ -183,8 +185,8 @@ def update_schedule(
 @router.delete("/{schedule_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_schedule(
     schedule_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 

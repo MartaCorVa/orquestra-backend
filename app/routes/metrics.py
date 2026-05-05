@@ -1,4 +1,5 @@
 from datetime import date, datetime, time, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -24,8 +25,8 @@ router = APIRouter(prefix = "/metrics", tags = ["Metrics"])
 @router.get("/fairness/{schedule_id}", response_model = ScheduleFairnessResponse)
 def get_schedule_fairness(
     schedule_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
@@ -37,11 +38,11 @@ def get_schedule_fairness(
 
 @router.get("/workload", response_model = WorkloadMetricsResponse)
 def get_workload_metrics(
-    start_date: date = Query(...),
-    end_date: date = Query(...),
-    employee_id: int | None = Query(default = None),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    start_date: Annotated[date, Query()],
+    end_date: Annotated[date, Query()],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    employee_id: Annotated[int | None, Query()] = None,
 ):
     try:
         return calculate_workload_metrics(
@@ -57,7 +58,7 @@ def get_workload_metrics(
 
 
 @router.get("/summary", response_model = SummaryResponse)
-def get_metrics_summary(db: Session = Depends(get_db)):
+def get_metrics_summary(db: Annotated[Session, Depends(get_db)]):
     active_employees = db.query(Employee).filter(Employee.active == True).count()
 
     today = date.today()
@@ -97,8 +98,8 @@ def get_metrics_summary(db: Session = Depends(get_db)):
 
 @router.get("/recent-schedule", response_model = RecentScheduleResponse | None)
 def get_recent_schedule(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     schedule = None
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -84,8 +85,8 @@ def can_employee_work_on_weekday(
 @router.post("/", response_model = ShiftResponse, status_code = status.HTTP_201_CREATED)
 def create_shift(
     shift: ShiftCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     new_shift = create_shift_with_optional_assignment(
         db = db,
@@ -102,8 +103,8 @@ def create_shift(
 
 @router.get("/", response_model = list[ShiftResponse])
 def get_shifts(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     if current_user.role == "admin":
         shifts = db.query(Shift).all()
@@ -125,8 +126,8 @@ def get_shifts(
 
 @router.get("/table", response_model = list[ShiftTableResponse])
 def get_shifts_table(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     if current_user.role == "admin":
         rows = (
@@ -182,8 +183,8 @@ def get_shifts_table(
 @router.post("/recurrent", response_model = list[ShiftResponse], status_code = status.HTTP_201_CREATED)
 def create_recurrent_shifts(
     payload: RecurrentShiftCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     if payload.start_date > payload.end_date:
         raise HTTPException(
@@ -328,8 +329,8 @@ def create_recurrent_shifts(
 @router.get("/{shift_id}", response_model = ShiftResponse)
 def get_shift(
     shift_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
 
@@ -346,8 +347,8 @@ def get_shift(
 def update_shift(
     shift_id: int,
     shift_data: ShiftUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     updated_shift = update_shift_with_optional_assignment(
         db = db,
@@ -361,8 +362,8 @@ def update_shift(
 @router.delete("/{shift_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_shift(
     shift_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     shift = db.query(Shift).filter(Shift.id == shift_id).first()
 

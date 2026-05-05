@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -13,8 +15,8 @@ router = APIRouter(prefix = "/planning", tags = ["Planning"])
 @router.post("/generate/{schedule_id}", status_code = status.HTTP_200_OK)
 def generate_planning(
     schedule_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 

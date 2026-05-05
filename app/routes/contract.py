@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -14,8 +16,8 @@ router = APIRouter(prefix = "/contracts", tags = ["Contracts"])
 @router.post("/", response_model = ContractResponse, status_code = status.HTTP_201_CREATED)
 def create_contract(
     contract: ContractCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == contract.employee_id).first()
     if not employee:
@@ -64,8 +66,8 @@ def create_contract(
 @router.get("/employee/{employee_id}", response_model = list[ContractResponse])
 def get_employee_contracts(
     employee_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
@@ -85,8 +87,8 @@ def get_employee_contracts(
 @router.get("/employee/{employee_id}/active", response_model = ContractResponse)
 def get_active_contract(
     employee_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
 
@@ -117,8 +119,8 @@ def get_active_contract(
 @router.patch("/{contract_id}/activate", response_model = ContractResponse)
 def activate_contract(
     contract_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
@@ -148,8 +150,8 @@ def activate_contract(
 @router.get("/{contract_id}", response_model = ContractResponse)
 def get_contract(
     contract_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
@@ -166,8 +168,8 @@ def get_contract(
 def update_contract(
     contract_id: int,
     contract_data: ContractUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
@@ -202,8 +204,8 @@ def update_contract(
 @router.delete("/{contract_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_contract(
     contract_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
