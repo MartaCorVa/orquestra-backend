@@ -178,3 +178,70 @@ def test_delete_shift_returns_404_when_shift_does_not_exist(client, auth_headers
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Shift not found"
+
+
+def test_create_shift_returns_400_when_schedule_not_exists(client, auth_headers):
+    payload = {
+        "start_datetime": "2026-03-01T09:00:00",
+        "end_datetime": "2026-03-01T13:00:00",
+        "creation_type": "manual",
+        "status": "pending",
+        "schedule_id": 9999,
+        "employee_id": None,
+    }
+
+    response = client.post(
+        "/shifts/",
+        json = payload,
+        headers = auth_headers,
+    )
+
+    assert response.status_code == 400
+
+
+def test_get_shifts_returns_empty_when_employee_not_linked(client, employee_auth_headers):
+    response = client.get(
+        "/shifts/",
+        headers = employee_auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_get_shift_returns_404(client, auth_headers):
+    response = client.get(
+        "/shifts/9999",
+        headers = auth_headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_update_shift_returns_404(client, auth_headers, test_schedule):
+    payload = {
+        "start_datetime": "2026-03-01T09:00:00",
+        "end_datetime": "2026-03-01T13:00:00",
+        "creation_type": "manual",
+        "status": "pending",
+        "schedule_id": test_schedule.id,
+        "employee_id": None,
+    }
+
+    response = client.put(
+        "/shifts/9999",
+        json = payload,
+        headers = auth_headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Shift not found"
+
+
+def test_delete_shift_returns_404(client, auth_headers):
+    response = client.delete(
+        "/shifts/9999",
+        headers = auth_headers,
+    )
+
+    assert response.status_code == 404
