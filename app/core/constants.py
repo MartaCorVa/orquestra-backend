@@ -1,3 +1,4 @@
+EMPLOYEE_DOES_NOT_EXIST = "Employee does not exist"
 EMPLOYEE_NOT_FOUND = "Employee not found"
 CONTRACT_NOT_FOUND = "Contract not found"
 SCHEDULE_NOT_FOUND = "Schedule not found"
