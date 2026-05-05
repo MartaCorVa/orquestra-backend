@@ -1,6 +1,9 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import EMPLOYEE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.employee import Employee
@@ -15,8 +18,8 @@ router = APIRouter(prefix = "/employees", tags = ["Employees"])
 @router.post("/", response_model = EmployeeResponse, status_code = status.HTTP_201_CREATED)
 def create_employee(
     employee: EmployeeCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     if employee.user_id is not None:
         user = db.query(User).filter(User.id == employee.user_id).first()
@@ -44,8 +47,8 @@ def create_employee(
 @router.post("/onboarding", response_model = EmployeeOnboardingResponse, status_code = status.HTTP_201_CREATED)
 def onboard_employee(
     payload: EmployeeOnboardingCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     try:
         result = create_employee_with_user(db, payload)
@@ -71,8 +74,8 @@ def onboard_employee(
 
 @router.get("/", response_model = list[EmployeeResponse])
 def get_employees(
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     return db.query(Employee).all()
 
@@ -80,14 +83,14 @@ def get_employees(
 @router.get("/{employee_id}", response_model = EmployeeResponse)
 def get_employee(
     employee_id: int, 
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     return employee
@@ -97,14 +100,14 @@ def get_employee(
 def update_employee(
     employee_id: int,
     employee_data: EmployeeUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     if employee_data.user_id is not None:
@@ -129,14 +132,14 @@ def update_employee(
 @router.delete("/{employee_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_employee(
     employee_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     db.delete(employee)

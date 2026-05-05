@@ -76,6 +76,26 @@ class ContractCreateOnboarding(ContractBase):
     end_date: date | None = None
 
 
+def validate_fixed_schedule_times(
+    has_fixed_schedule: bool | None,
+    preferred_start_time: time | None,
+    preferred_end_time: time | None,
+) -> None:
+    if has_fixed_schedule is True and (
+        preferred_start_time is None or preferred_end_time is None
+    ):
+        raise ValueError(
+            "preferred_start_time and preferred_end_time are required when has_fixed_schedule is true"
+        )
+
+    if (
+        preferred_start_time is not None
+        and preferred_end_time is not None
+        and preferred_end_time <= preferred_start_time
+    ):
+        raise ValueError("preferred_end_time must be later than preferred_start_time")
+
+
 class ContractUpdate(BaseModel):
     weekly_hours: int | None = None
     daily_hours: int | None = None
@@ -101,30 +121,23 @@ class ContractUpdate(BaseModel):
     def validate_contract_update(self):
         if self.weekly_hours is not None and self.weekly_hours <= 0:
             raise ValueError("weekly_hours must be greater than 0")
-
+    
         if self.daily_hours is not None and self.daily_hours <= 0:
             raise ValueError("daily_hours must be greater than 0")
-
+    
         if self.min_days_off_per_week is not None:
             if self.min_days_off_per_week < 0 or self.min_days_off_per_week > 7:
                 raise ValueError("min_days_off_per_week must be between 0 and 7")
-
+    
         if self.end_date is not None and self.start_date is not None and self.end_date < self.start_date:
             raise ValueError("end_date cannot be earlier than start_date")
-
-        if self.has_fixed_schedule is True:
-            if self.preferred_start_time is None or self.preferred_end_time is None:
-                raise ValueError(
-                    "preferred_start_time and preferred_end_time are required when has_fixed_schedule is true"
-                )
-
-        if (
-            self.preferred_start_time is not None
-            and self.preferred_end_time is not None
-            and self.preferred_end_time <= self.preferred_start_time
-        ):
-            raise ValueError("preferred_end_time must be later than preferred_start_time")
-
+    
+        validate_fixed_schedule_times(
+            has_fixed_schedule = self.has_fixed_schedule,
+            preferred_start_time = self.preferred_start_time,
+            preferred_end_time = self.preferred_end_time,
+        )
+    
         return self
 
 

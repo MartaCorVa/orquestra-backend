@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -15,8 +17,8 @@ router = APIRouter(prefix = "/assignments", tags = ["Assignments"])
 @router.post("/", response_model = AssignmentResponse, status_code = status.HTTP_201_CREATED)
 def create_assignment(
     assignment: AssignmentCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == assignment.employee_id).first()
     shift = db.query(Shift).filter(Shift.id == assignment.shift_id).first()
@@ -47,8 +49,8 @@ def create_assignment(
 
 @router.get("/", response_model = list[AssignmentResponse])
 def get_assignments(
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     return db.query(Assignment).all()
 
@@ -56,8 +58,8 @@ def get_assignments(
 @router.delete("/{assignment_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_assignment(
     assignment_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 

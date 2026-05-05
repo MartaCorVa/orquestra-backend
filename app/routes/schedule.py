@@ -1,6 +1,9 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import SCHEDULE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.assignment import Assignment
@@ -16,8 +19,8 @@ router = APIRouter(prefix = "/schedules", tags = ["Schedules"])
 @router.post("/", response_model = ScheduleResponse, status_code = status.HTTP_201_CREATED)
 def create_schedule(
     schedule: ScheduleCreate, 
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     new_schedule = Schedule(
         start_date = schedule.start_date,
@@ -34,8 +37,8 @@ def create_schedule(
 
 @router.get("/", response_model=list[ScheduleResponse])
 def get_schedules(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     if current_user.role == "admin":
         schedules = db.query(Schedule).all()
@@ -57,16 +60,26 @@ def get_schedules(
     return schedules
 
 
-@router.get("/{schedule_id}", response_model=ScheduleDetailResponse)
+@router.get(
+    "/{schedule_id}",
+    response_model=ScheduleDetailResponse,
+    responses = {
+        403: {"description": "Not authorized"},
+        404: {"description": SCHEDULE_NOT_FOUND}
+    }
+)
 def get_schedule_by_id(
     schedule_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        raise HTTPException(
+            status_code = 404,
+            detail = SCHEDULE_NOT_FOUND
+        )
 
     if current_user.role != "admin":
         employee = (
@@ -76,7 +89,10 @@ def get_schedule_by_id(
         )
 
         if not employee:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(
+                status_code = 403,
+                detail = "Not authorized"
+            )
 
         has_access = (
             db.query(Shift)
@@ -89,7 +105,10 @@ def get_schedule_by_id(
         )
 
         if not has_access:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(
+                status_code = 403, 
+                detail = "Not authorized"
+            )
 
     shifts = (
         db.query(Shift)
@@ -158,15 +177,15 @@ def get_schedule_by_id(
 def update_schedule(
     schedule_id: int,
     schedule_data: ScheduleUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Schedule not found"
+            detail = SCHEDULE_NOT_FOUND
         )
 
     update_data = schedule_data.model_dump(exclude_unset = True)
@@ -183,15 +202,15 @@ def update_schedule(
 @router.delete("/{schedule_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_schedule(
     schedule_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Schedule not found"
+            detail = SCHEDULE_NOT_FOUND
         )
 
     db.delete(schedule)

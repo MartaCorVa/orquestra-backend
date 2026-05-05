@@ -240,3 +240,87 @@ def test_get_candidate_priority_returns_expected_tuple(
     )
 
     assert result == (30, 40, -1)
+
+
+def test_build_empty_planning_response():
+    from app.services.planning_service import build_empty_planning_response
+
+    result = build_empty_planning_response()
+
+    assert result["assignments_created"] == []
+    assert result["unfilled_shifts"] == []
+    assert result["employees_below_target"] == []
+    assert result["missing_contract_hours_total"] == 0.0
+
+
+def test_build_planning_message_when_missing_hours():
+    from app.services.planning_service import build_planning_message
+
+    result = build_planning_message(10.0)
+
+    assert "Additional shifts covering 10.0 hours are needed" in result
+
+
+def test_build_planning_message_when_no_missing_hours():
+    from app.services.planning_service import build_planning_message
+
+    result = build_planning_message(0.0)
+
+    assert result == "Planning generated successfully and all active contract hours were fulfilled"
+
+
+def test_build_unfilled_shift_response(test_shifts):
+    from app.services.planning_service import build_unfilled_shift_response
+
+    shift = test_shifts[0]
+    rejected_employees = [{"employee_id": 1, "errors": ["error"]}]
+
+    result = build_unfilled_shift_response(
+        shift = shift,
+        rejected_employees = rejected_employees,
+    )
+
+    assert result["shift_id"] == shift.id
+    assert result["missing_employees"] == 1
+    assert result["rejected_employees"] == rejected_employees
+
+
+def test_build_candidate_pool_excludes_assigned_employees(active_employees):
+    from app.services.planning_service import build_candidate_pool
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+
+    result = build_candidate_pool(
+        employees_with_contracts = [(employee, contract)],
+        assigned_employee_ids = {employee.id},
+    )
+
+    assert result == []
+
+
+def test_build_available_hours_candidate_pool_excludes_employees_without_remaining_hours(
+    db,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import build_available_hours_candidate_pool
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employee_weekly_assigned_hours",
+        lambda **kwargs: contract.weekly_hours,
+    )
+
+    result = build_available_hours_candidate_pool(
+        db = db,
+        shift = shift,
+        employees_with_contracts = [(employee, contract)],
+        assigned_employee_ids = set(),
+    )
+
+    assert result == []

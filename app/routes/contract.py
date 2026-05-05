@@ -1,6 +1,9 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import CONTRACT_NOT_FOUND, EMPLOYEE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.contract import Contract
@@ -14,8 +17,8 @@ router = APIRouter(prefix = "/contracts", tags = ["Contracts"])
 @router.post("/", response_model = ContractResponse, status_code = status.HTTP_201_CREATED)
 def create_contract(
     contract: ContractCreate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == contract.employee_id).first()
     if not employee:
@@ -64,14 +67,14 @@ def create_contract(
 @router.get("/employee/{employee_id}", response_model = list[ContractResponse])
 def get_employee_contracts(
     employee_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     return (
@@ -85,15 +88,15 @@ def get_employee_contracts(
 @router.get("/employee/{employee_id}/active", response_model = ContractResponse)
 def get_active_contract(
     employee_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
 
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     contract = (
@@ -117,15 +120,15 @@ def get_active_contract(
 @router.patch("/{contract_id}/activate", response_model = ContractResponse)
 def activate_contract(
     contract_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     (
@@ -148,15 +151,15 @@ def activate_contract(
 @router.get("/{contract_id}", response_model = ContractResponse)
 def get_contract(
     contract_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_active_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_active_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     return contract
@@ -166,15 +169,15 @@ def get_contract(
 def update_contract(
     contract_id: int,
     contract_data: ContractUpdate,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     update_data = contract_data.model_dump(exclude_unset = True)
@@ -202,15 +205,15 @@ def update_contract(
 @router.delete("/{contract_id}", status_code = status.HTTP_204_NO_CONTENT)
 def delete_contract(
     contract_id: int,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user)
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)]
 ):
     contract = db.query(Contract).filter(Contract.id == contract_id).first()
 
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     db.delete(contract)
