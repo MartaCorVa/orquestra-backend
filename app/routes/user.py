@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import USER_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.core.security import hash_password
@@ -57,7 +58,7 @@ def get_user(
     if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "User not found"
+            detail = USER_NOT_FOUND
         )
 
     return user
@@ -74,7 +75,7 @@ def update_user(
     if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "User not found"
+            detail = USER_NOT_FOUND
         )
 
     update_data = user_data.model_dump(exclude_unset = True)
@@ -101,7 +102,7 @@ def delete_user(
     if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "User not found"
+            detail = USER_NOT_FOUND
         )
 
     db.delete(user)

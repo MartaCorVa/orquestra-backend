@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import EMPLOYEE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.employee import Employee
@@ -89,7 +90,7 @@ def get_employee(
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     return employee
@@ -106,7 +107,7 @@ def update_employee(
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     if employee_data.user_id is not None:
@@ -138,7 +139,7 @@ def delete_employee(
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     db.delete(employee)

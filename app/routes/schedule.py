@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import SCHEDULE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.assignment import Assignment
@@ -59,7 +60,13 @@ def get_schedules(
     return schedules
 
 
-@router.get("/{schedule_id}", response_model=ScheduleDetailResponse)
+@router.get(
+    "/{schedule_id}",
+    response_model=ScheduleDetailResponse,
+    responses = {
+        404: {"description": SCHEDULE_NOT_FOUND}
+    }
+)
 def get_schedule_by_id(
     schedule_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -68,7 +75,10 @@ def get_schedule_by_id(
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
-        raise HTTPException(status_code=404, detail="Schedule not found")
+        raise HTTPException(
+            status_code = 404,
+            detail = SCHEDULE_NOT_FOUND
+        )
 
     if current_user.role != "admin":
         employee = (
@@ -168,7 +178,7 @@ def update_schedule(
     if not schedule:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Schedule not found"
+            detail = SCHEDULE_NOT_FOUND
         )
 
     update_data = schedule_data.model_dump(exclude_unset = True)
@@ -193,7 +203,7 @@ def delete_schedule(
     if not schedule:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Schedule not found"
+            detail = SCHEDULE_NOT_FOUND
         )
 
     db.delete(schedule)

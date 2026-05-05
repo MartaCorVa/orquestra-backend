@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import SHIFT_VALIDATION_FAILED
 from app.models.assignment import Assignment
 from app.models.employee import Employee
 from app.models.schedule import Schedule
@@ -25,7 +26,7 @@ def validate_schedule_exists(db: Session, schedule_id: int) -> Schedule:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = {
-                "message": "Shift validation failed",
+                "message": SHIFT_VALIDATION_FAILED,
                 "errors": ["Schedule does not exist"],
             },
         )
@@ -43,7 +44,7 @@ def validate_employee_for_assignment(
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = {
-                "message": "Shift validation failed",
+                "message": SHIFT_VALIDATION_FAILED,
                 "errors": ["Employee does not exist"],
             },
         )
@@ -52,7 +53,7 @@ def validate_employee_for_assignment(
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = {
-                "message": "Shift validation failed",
+                "message": SHIFT_VALIDATION_FAILED,
                 "errors": ["Employee is not active"],
             },
         )
@@ -111,7 +112,7 @@ def validate_shift_creation(
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = {
-                "message": "Shift validation failed",
+                "message": SHIFT_VALIDATION_FAILED,
                 "errors": list(dict.fromkeys(errors)),
             },
         )
@@ -264,7 +265,7 @@ def update_shift_with_optional_assignment(
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = {
-                "message": "Shift validation failed",
+                "message": SHIFT_VALIDATION_FAILED,
                 "errors": list(dict.fromkeys(errors)),
             },
         )

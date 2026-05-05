@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import CONTRACT_NOT_FOUND, EMPLOYEE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.contract import Contract
@@ -73,7 +74,7 @@ def get_employee_contracts(
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     return (
@@ -95,7 +96,7 @@ def get_active_contract(
     if not employee:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Employee not found"
+            detail = EMPLOYEE_NOT_FOUND
         )
 
     contract = (
@@ -127,7 +128,7 @@ def activate_contract(
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     (
@@ -158,7 +159,7 @@ def get_contract(
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     return contract
@@ -176,7 +177,7 @@ def update_contract(
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     update_data = contract_data.model_dump(exclude_unset = True)
@@ -212,7 +213,7 @@ def delete_contract(
     if not contract:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = "Contract not found"
+            detail = CONTRACT_NOT_FOUND
         )
 
     db.delete(contract)
