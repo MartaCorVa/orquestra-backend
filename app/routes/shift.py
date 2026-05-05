@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.constants import EMPLOYEE_DOES_NOT_EXIST, SHIFT_VALIDATION_FAILED
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.assignment import Assignment
@@ -180,135 +181,203 @@ def get_shifts_table(
     ]
 
 
-@router.post("/recurrent", response_model = list[ShiftResponse], status_code = status.HTTP_201_CREATED)
-def create_recurrent_shifts(
-    payload: RecurrentShiftCreate,
-    db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(get_current_admin_user)]
-):
+WEEKDAY_MAP = {
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6,
+}
+
+
+def validate_recurrent_shift_payload(payload: RecurrentShiftCreate) -> set[int]:
     if payload.start_date > payload.end_date:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
-            detail = "Start date cannot be later than end date"
+            detail = "Start date cannot be later than end date",
         )
 
     if payload.start_time >= payload.end_time:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
-            detail = "End time must be later than start time"
+            detail = "End time must be later than start time",
         )
 
-    weekday_map = {
-        "monday": 0,
-        "tuesday": 1,
-        "wednesday": 2,
-        "thursday": 3,
-        "friday": 4,
-        "saturday": 5,
-        "sunday": 6
-    }
+    return {WEEKDAY_MAP[weekday] for weekday in payload.weekdays}
 
-    selected_weekdays = {weekday_map[weekday] for weekday in payload.weekdays}
 
-    active_contract = None
+def get_employee_and_contract_for_recurrent_shift(
+    db: Session,
+    payload: RecurrentShiftCreate,
+    selected_weekdays: set[int],
+) -> tuple[Employee | None, Contract | None]:
+    if payload.employee_id is None:
+        return None, None
 
-    if payload.employee_id is not None:
-        employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
+    employee = db.query(Employee).filter(Employee.id == payload.employee_id).first()
 
-        if not employee:
-            raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = "Employee does not exist"
-            )
+    if not employee:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = EMPLOYEE_DOES_NOT_EXIST,
+        )
 
-        active_contract = get_active_contract_for_employee(
+    active_contract = get_active_contract_for_employee(
+        db = db,
+        employee_id = payload.employee_id,
+    )
+
+    if active_contract is None:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = "Employee does not have an active contract",
+        )
+
+    invalid_weekdays = [
+        weekday
+        for weekday in selected_weekdays
+        if not can_employee_work_on_weekday(active_contract, weekday)
+    ]
+
+    if invalid_weekdays:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = "Selected shifts do not respect the employee active contract working days",
+        )
+
+    return employee, active_contract
+
+
+def get_existing_recurrent_shift(
+    db: Session,
+    payload: RecurrentShiftCreate,
+    start_datetime: datetime,
+    end_datetime: datetime,
+) -> Shift | None:
+    return (
+        db.query(Shift)
+        .filter(
+            Shift.schedule_id == payload.schedule_id,
+            Shift.start_datetime == start_datetime,
+            Shift.end_datetime == end_datetime,
+        )
+        .first()
+    )
+
+
+def assign_employee_to_existing_shift(
+    db: Session,
+    existing_shift: Shift,
+    payload: RecurrentShiftCreate,
+    employee: Employee | None,
+    active_contract: Contract | None,
+) -> None:
+    if payload.employee_id is None:
+        return
+
+    existing_assignment = (
+        db.query(Assignment)
+        .filter(
+            Assignment.shift_id == existing_shift.id,
+            Assignment.employee_id == payload.employee_id,
+        )
+        .first()
+    )
+
+    if existing_assignment is not None:
+        return
+
+    assignment_errors = get_assignment_errors(
+        db = db,
+        shift = existing_shift,
+        employee = employee,
+        contract = active_contract,
+    )
+
+    if assignment_errors:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = {
+                "message": SHIFT_VALIDATION_FAILED,
+                "errors": assignment_errors,
+            },
+        )
+
+    assignment = Assignment(
+        shift_id = existing_shift.id,
+        employee_id = payload.employee_id,
+    )
+    db.add(assignment)
+
+
+def create_or_update_recurrent_shift_for_date(
+    db: Session,
+    payload: RecurrentShiftCreate,
+    current_date,
+    employee: Employee | None,
+    active_contract: Contract | None,
+) -> Shift:
+    start_datetime = datetime.combine(current_date, payload.start_time)
+    end_datetime = datetime.combine(current_date, payload.end_time)
+
+    existing_shift = get_existing_recurrent_shift(
+        db = db,
+        payload = payload,
+        start_datetime = start_datetime,
+        end_datetime = end_datetime,
+    )
+
+    if existing_shift:
+        assign_employee_to_existing_shift(
             db = db,
-            employee_id = payload.employee_id,
+            existing_shift = existing_shift,
+            payload = payload,
+            employee = employee,
+            active_contract = active_contract,
         )
+        return existing_shift
 
-        if active_contract is None:
-            raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = "Employee does not have an active contract"
-            )
+    return create_shift_with_optional_assignment(
+        db = db,
+        start_datetime = start_datetime,
+        end_datetime = end_datetime,
+        creation_type = payload.creation_type,
+        status_value = payload.status,
+        schedule_id = payload.schedule_id,
+        employee_id = payload.employee_id,
+    )
 
-        invalid_weekdays = [
-            weekday
-            for weekday in selected_weekdays
-            if not can_employee_work_on_weekday(active_contract, weekday)
-        ]
 
-        if invalid_weekdays:
-            raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = "Selected shifts do not respect the employee active contract working days"
-            )
+@router.post("/recurrent", response_model = list[ShiftResponse], status_code = status.HTTP_201_CREATED)
+def create_recurrent_shifts(
+    payload: RecurrentShiftCreate,
+    db: Annotated[Session, Depends(get_db)],
+    _: Annotated[User, Depends(get_current_admin_user)],
+):
+    selected_weekdays = validate_recurrent_shift_payload(payload)
+
+    employee, active_contract = get_employee_and_contract_for_recurrent_shift(
+        db = db,
+        payload = payload,
+        selected_weekdays = selected_weekdays,
+    )
 
     affected_shifts: list[Shift] = []
     current_date = payload.start_date
 
     while current_date <= payload.end_date:
         if current_date.weekday() in selected_weekdays:
-            start_datetime = datetime.combine(current_date, payload.start_time)
-            end_datetime = datetime.combine(current_date, payload.end_time)
-
-            existing_shift = (
-                db.query(Shift)
-                .filter(
-                    Shift.schedule_id == payload.schedule_id,
-                    Shift.start_datetime == start_datetime,
-                    Shift.end_datetime == end_datetime
+            affected_shifts.append(
+                create_or_update_recurrent_shift_for_date(
+                    db = db,
+                    payload = payload,
+                    current_date = current_date,
+                    employee = employee,
+                    active_contract = active_contract,
                 )
-                .first()
             )
-
-            if existing_shift:
-                if payload.employee_id is not None:
-                    existing_assignment = (
-                        db.query(Assignment)
-                        .filter(
-                            Assignment.shift_id == existing_shift.id,
-                            Assignment.employee_id == payload.employee_id
-                        )
-                        .first()
-                    )
-            
-                    if existing_assignment is None:
-                        assignment_errors = get_assignment_errors(
-                            db = db,
-                            shift = existing_shift,
-                            employee = employee,
-                            contract = active_contract
-                        )
-            
-                        if assignment_errors:
-                            raise HTTPException(
-                                status_code = status.HTTP_400_BAD_REQUEST,
-                                detail = {
-                                    "message": "Shift validation failed",
-                                    "errors": assignment_errors
-                                },
-                            )
-            
-                        assignment = Assignment(
-                            shift_id=existing_shift.id,
-                            employee_id=payload.employee_id,
-                        )
-                        db.add(assignment)
-            
-                affected_shifts.append(existing_shift)
-            else:
-                new_shift = create_shift_with_optional_assignment(
-                    db=db,
-                    start_datetime=start_datetime,
-                    end_datetime=end_datetime,
-                    creation_type=payload.creation_type,
-                    status_value=payload.status,
-                    schedule_id=payload.schedule_id,
-                    employee_id=payload.employee_id,
-                )
-
-                affected_shifts.append(new_shift)
 
         current_date += timedelta(days = 1)
 
