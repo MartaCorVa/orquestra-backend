@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.constants import SCHEDULE_NOT_FOUND
 from app.core.database import get_db
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.assignment import Assignment
@@ -22,7 +23,13 @@ from app.services.metrics_service import calculate_schedule_fairness, calculate_
 router = APIRouter(prefix = "/metrics", tags = ["Metrics"])
 
 
-@router.get("/fairness/{schedule_id}", response_model = ScheduleFairnessResponse)
+@router.get(
+    "/fairness/{schedule_id}",
+    response_model = ScheduleFairnessResponse,
+    responses = {
+        404: {"description": SCHEDULE_NOT_FOUND}
+    }
+)
 def get_schedule_fairness(
     schedule_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -31,12 +38,21 @@ def get_schedule_fairness(
     schedule = db.query(Schedule).filter(Schedule.id == schedule_id).first()
 
     if not schedule:
-        raise HTTPException(status_code = 404, detail = "Schedule not found")
+        raise HTTPException(
+            status_code = 404,
+            detail = SCHEDULE_NOT_FOUND
+        )
 
     return calculate_schedule_fairness(db, schedule_id)
 
 
-@router.get("/workload", response_model = WorkloadMetricsResponse)
+@router.get(
+    "/workload", 
+    response_model = WorkloadMetricsResponse,
+    responses = {
+        400: {"description": "Bad request"}
+    }
+)
 def get_workload_metrics(
     start_date: Annotated[date, Query()],
     end_date: Annotated[date, Query()],
@@ -53,7 +69,10 @@ def get_workload_metrics(
             employee_id = employee_id
         )
     except ValueError as exc:
-        raise HTTPException(status_code = 400, detail = str(exc))
+        raise HTTPException(
+            status_code = 400, 
+            detail = str(exc)
+        )
     
 
 

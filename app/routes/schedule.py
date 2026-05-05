@@ -64,6 +64,7 @@ def get_schedules(
     "/{schedule_id}",
     response_model=ScheduleDetailResponse,
     responses = {
+        403: {"description": "Not authorized"},
         404: {"description": SCHEDULE_NOT_FOUND}
     }
 )
@@ -88,7 +89,10 @@ def get_schedule_by_id(
         )
 
         if not employee:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(
+                status_code = 403,
+                detail = "Not authorized"
+            )
 
         has_access = (
             db.query(Shift)
@@ -101,7 +105,10 @@ def get_schedule_by_id(
         )
 
         if not has_access:
-            raise HTTPException(status_code=403, detail="Not authorized")
+            raise HTTPException(
+                status_code = 403, 
+                detail = "Not authorized"
+            )
 
     shifts = (
         db.query(Shift)
