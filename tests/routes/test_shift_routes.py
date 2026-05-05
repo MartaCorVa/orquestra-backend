@@ -1,4 +1,10 @@
-from datetime import datetime
+from datetime import date, datetime, time
+
+from fastapi import HTTPException
+import pytest
+
+from app.routes.shift import create_or_update_recurrent_shift_for_date, get_employee_and_contract_for_recurrent_shift, validate_recurrent_shift_payload
+from app.schemas.shift import RecurrentShiftCreate
 
 
 def test_create_shift_requires_admin(client, employee_auth_headers, test_schedule):
@@ -245,3 +251,122 @@ def test_delete_shift_returns_404(client, auth_headers):
     )
 
     assert response.status_code == 404
+
+
+def build_recurrent_payload(**overrides):
+    payload = {
+        "start_date": date(2026, 3, 2),
+        "end_date": date(2026, 3, 6),
+        "start_time": time(9, 0),
+        "end_time": time(13, 0),
+        "weekdays": ["monday", "wednesday"],
+        "creation_type": "manual",
+        "status": "pending",
+        "schedule_id": 1,
+        "employee_id": None,
+    }
+
+    payload.update(overrides)
+
+    return RecurrentShiftCreate(**payload)
+
+
+def test_validate_recurrent_shift_payload_returns_selected_weekdays():
+    payload = build_recurrent_payload()
+
+    result = validate_recurrent_shift_payload(payload)
+
+    assert result == {0, 2}
+
+
+def test_get_employee_and_contract_for_recurrent_shift_returns_none_without_employee(db):
+    payload = build_recurrent_payload(employee_id = None)
+
+    employee, contract = get_employee_and_contract_for_recurrent_shift(
+        db = db,
+        payload = payload,
+        selected_weekdays = {0, 2},
+    )
+
+    assert employee is None
+    assert contract is None
+
+
+def test_get_employee_and_contract_for_recurrent_shift_returns_employee_and_contract(
+    db,
+    active_employees,
+):
+    employee = active_employees[0]
+    payload = build_recurrent_payload(employee_id = employee.id)
+
+    result_employee, contract = get_employee_and_contract_for_recurrent_shift(
+        db = db,
+        payload = payload,
+        selected_weekdays = {0, 2},
+    )
+
+    assert result_employee.id == employee.id
+    assert contract.employee_id == employee.id
+
+
+def test_get_employee_and_contract_for_recurrent_shift_raises_when_employee_missing(db):
+    payload = build_recurrent_payload(employee_id = 9999)
+
+    with pytest.raises(HTTPException) as exc:
+        get_employee_and_contract_for_recurrent_shift(
+            db = db,
+            payload = payload,
+            selected_weekdays = {0},
+        )
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "Employee does not exist"
+
+
+def test_create_or_update_recurrent_shift_for_date_returns_existing_shift(
+    db,
+    test_schedule,
+    test_shifts,
+):
+    shift = test_shifts[0]
+    payload = build_recurrent_payload(
+        start_time = shift.start_datetime.time(),
+        end_time = shift.end_datetime.time(),
+        schedule_id = test_schedule.id,
+        employee_id = None,
+    )
+
+    result = create_or_update_recurrent_shift_for_date(
+        db = db,
+        payload = payload,
+        current_date = shift.start_datetime.date(),
+        employee = None,
+        active_contract = None,
+    )
+
+    assert result.id == shift.id
+
+
+def test_create_or_update_recurrent_shift_for_date_creates_new_shift(
+    db,
+    test_schedule,
+):
+    payload = build_recurrent_payload(
+        start_date = date(2026, 3, 3),
+        end_date = date(2026, 3, 3),
+        start_time = time(9, 0),
+        end_time = time(13, 0),
+        schedule_id = test_schedule.id,
+        employee_id = None,
+    )
+
+    result = create_or_update_recurrent_shift_for_date(
+        db = db,
+        payload = payload,
+        current_date = date(2026, 3, 3),
+        employee = None,
+        active_contract = None,
+    )
+
+    assert result.id is not None
+    assert result.schedule_id == test_schedule.id
