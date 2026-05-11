@@ -46,7 +46,8 @@ class SummaryResponse(BaseModel):
 
 
 class RecentScheduleShiftResponse(BaseModel):
-    date: date
+    start_date: date
+    end_date: date
     start_time: time
     end_time: time
     status: str
