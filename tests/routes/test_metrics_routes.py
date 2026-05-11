@@ -291,7 +291,8 @@ def test_recent_schedule_contains_shift_data(
     if data:
         shift = data["shifts"][0]
 
-        assert "date" in shift
+        assert "start_date" in shift
+        assert "end_date" in shift
         assert "start_time" in shift
         assert "end_time" in shift
         assert "status" in shift

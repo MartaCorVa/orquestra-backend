@@ -162,7 +162,8 @@ def get_recent_schedule(
         "id": schedule.id,
         "shifts": [
             {
-                "date": shift.start_datetime.date(),
+                "start_date": shift.start_datetime.date(),
+                "end_date": shift.end_datetime.date(),
                 "start_time": shift.start_datetime.time(),
                 "end_time": shift.end_datetime.time(),
                 "status": shift.status,
