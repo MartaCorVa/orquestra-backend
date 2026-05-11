@@ -151,7 +151,8 @@ def get_schedule_by_id(
         "shifts": [
             {
                 "id": shift.id,
-                "date": shift.start_datetime.date(),
+                "start_date": shift.start_datetime.date(),
+                "end_date": shift.end_datetime.date(),
                 "start_time": shift.start_datetime.time(),
                 "end_time": shift.end_datetime.time(),
                 "status": shift.status,
