@@ -38,7 +38,8 @@ class ScheduleDetailAssignmentResponse(BaseModel):
 
 class ScheduleDetailShiftResponse(BaseModel):
     id: int
-    date: date
+    start_date: date
+    end_date: date
     start_time: time
     end_time: time
     status: str
