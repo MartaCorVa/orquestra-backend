@@ -44,8 +44,10 @@ class ContractBase(BaseModel):
                     "preferred_start_time and preferred_end_time are required when has_fixed_schedule is true"
                 )
 
-            if self.preferred_end_time <= self.preferred_start_time:
-                raise ValueError("preferred_end_time must be later than preferred_start_time")
+            if self.preferred_end_time == self.preferred_start_time:
+                raise ValueError(
+                    "preferred_start_time and preferred_end_time cannot be the same when has_fixed_schedule is true"
+                )
 
         return self
 
@@ -91,9 +93,11 @@ def validate_fixed_schedule_times(
     if (
         preferred_start_time is not None
         and preferred_end_time is not None
-        and preferred_end_time <= preferred_start_time
+        and preferred_end_time == preferred_start_time
     ):
-        raise ValueError("preferred_end_time must be later than preferred_start_time")
+        raise ValueError(
+            "preferred_start_time and preferred_end_time cannot be the same when has_fixed_schedule is true"
+        )
 
 
 class ContractUpdate(BaseModel):
