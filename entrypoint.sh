@@ -1,14 +1,8 @@
 #!/bin/sh
 
-echo "Waiting for database..."
-
-until python -c "import os, psycopg2; psycopg2.connect(os.environ['DATABASE_URL'], sslmode='require')" >/dev/null 2>&1; do
-  sleep 2
-done
-
-echo "Database is ready"
+echo "Starting application..."
 
 python -m app.init_db
 python -m app.seed
 
-uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
