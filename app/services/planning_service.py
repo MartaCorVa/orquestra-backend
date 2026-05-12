@@ -25,12 +25,41 @@ def get_active_contract(db: Session, employee_id: int) -> Contract | None:
     )
 
 
+def is_contract_working_day(contract: Contract, shift: Shift) -> bool:
+    weekday = shift.start_datetime.weekday()
+
+    working_days = {
+        0: contract.work_monday,
+        1: contract.work_tuesday,
+        2: contract.work_wednesday,
+        3: contract.work_thursday,
+        4: contract.work_friday,
+        5: contract.work_saturday,
+        6: contract.work_sunday,
+    }
+
+    return working_days[weekday]
+
+
+def does_shift_match_contract(contract: Contract, shift: Shift) -> bool:
+    if not is_contract_working_day(contract = contract, shift = shift):
+        return False
+
+    if not contract.has_fixed_schedule:
+        return True
+
+    return (
+        shift.start_datetime.time() == contract.preferred_start_time
+        and shift.end_datetime.time() == contract.preferred_end_time
+    )
+
+
 def get_candidate_priority(
     db: Session,
     employee: Employee,
     contract: Contract,
     shift: Shift,
-) -> tuple[float, int, int]:
+) -> tuple[int, float, int, int]:
     assigned_hours = get_employee_weekly_assigned_hours(
         db = db,
         employee_id = employee.id,
@@ -45,7 +74,13 @@ def get_candidate_priority(
 
     remaining_hours = contract.weekly_hours - assigned_hours
 
+    contract_match_score = 1 if does_shift_match_contract(
+        contract = contract,
+        shift = shift,
+    ) else 0
+
     return (
+        contract_match_score,
         remaining_hours,
         contract.weekly_hours,
         -len(working_days),
@@ -86,7 +121,9 @@ def get_employees_below_target(
     return employees_below_target, missing_contract_hours_total
 
 
-def get_active_employees_with_contracts(db: Session) -> list[tuple[Employee, Contract]]:
+def get_active_employees_with_contracts(
+    db: Session,
+) -> list[tuple[Employee, Contract]]:
     employees = (
         db.query(Employee)
         .filter(Employee.active == True)
@@ -97,7 +134,10 @@ def get_active_employees_with_contracts(db: Session) -> list[tuple[Employee, Con
     employees_with_contracts = []
 
     for employee in employees:
-        active_contract = get_active_contract(db = db, employee_id = employee.id)
+        active_contract = get_active_contract(
+            db = db,
+            employee_id = employee.id,
+        )
 
         if active_contract is not None:
             employees_with_contracts.append((employee, active_contract))
@@ -114,14 +154,20 @@ def get_schedule_shifts(db: Session, schedule_id: int) -> list[Shift]:
     )
 
 
-def get_shift_assigned_employee_ids(db: Session, shift: Shift) -> set[int]:
+def get_shift_assigned_employee_ids(
+    db: Session,
+    shift: Shift,
+) -> set[int]:
     existing_assignments = (
         db.query(Assignment)
         .filter(Assignment.shift_id == shift.id)
         .all()
     )
 
-    return {assignment.employee_id for assignment in existing_assignments}
+    return {
+        assignment.employee_id
+        for assignment in existing_assignments
+    }
 
 
 def build_candidate_pool(
@@ -169,8 +215,16 @@ def build_available_hours_candidate_pool(
             reference_datetime = shift.start_datetime,
         )
 
-        if contract.weekly_hours - assigned_hours > 0:
-            candidate_pool.append((employee, contract))
+        if contract.weekly_hours - assigned_hours <= 0:
+            continue
+
+        if not does_shift_match_contract(
+            contract = contract,
+            shift = shift,
+        ):
+            continue
+
+        candidate_pool.append((employee, contract))
 
     return candidate_pool
 
@@ -200,6 +254,7 @@ def assign_valid_candidates_to_shift(
 
         db.add(assignment)
         db.flush()
+
         assignments_created.append(assignment)
 
     return assignments_created
@@ -211,19 +266,29 @@ def build_empty_planning_response() -> dict[str, Any]:
         "unfilled_shifts": [],
         "employees_below_target": [],
         "missing_contract_hours_total": 0.0,
-        "message": "No employees with active contracts or shifts available for planning",
+        "message": (
+            "No employees with active contracts or shifts "
+            "available for planning"
+        ),
     }
 
 
-def build_planning_message(missing_contract_hours_total: float) -> str:
+def build_planning_message(
+    missing_contract_hours_total: float,
+) -> str:
     if missing_contract_hours_total > 0:
         return (
             "Planning generated successfully. "
-            f"Additional shifts covering {missing_contract_hours_total} hours are needed "
-            "to fulfill all active contract hours before regenerating planning."
+            f"Additional shifts covering "
+            f"{missing_contract_hours_total} hours are needed "
+            "to fulfill all active contract hours before "
+            "regenerating planning."
         )
 
-    return "Planning generated successfully and all active contract hours were fulfilled"
+    return (
+        "Planning generated successfully and all "
+        "active contract hours were fulfilled"
+    )
 
 
 def build_planning_response(
@@ -233,10 +298,12 @@ def build_planning_response(
     assignments_created: list[Assignment],
     unfilled_shifts: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    employees_below_target, missing_contract_hours_total = get_employees_below_target(
-        db = db,
-        employees_with_contracts = employees_with_contracts,
-        reference_shift = shifts[0],
+    employees_below_target, missing_contract_hours_total = (
+        get_employees_below_target(
+            db = db,
+            employees_with_contracts = employees_with_contracts,
+            reference_shift = shifts[0],
+        )
     )
 
     return {
@@ -250,7 +317,9 @@ def build_planning_response(
         "unfilled_shifts": unfilled_shifts,
         "employees_below_target": employees_below_target,
         "missing_contract_hours_total": missing_contract_hours_total,
-        "message": build_planning_message(missing_contract_hours_total),
+        "message": build_planning_message(
+            missing_contract_hours_total = missing_contract_hours_total,
+        ),
     }
 
 
@@ -300,11 +369,15 @@ def assign_required_employee_to_shift(
             rejected_employees.append(
                 {
                     "employee_id": employee.id,
-                    "employee_name": f"{employee.first_name} {employee.last_name}",
+                    "employee_name": (
+                        f"{employee.first_name} "
+                        f"{employee.last_name}"
+                    ),
                     "contract_id": contract.id,
                     "errors": errors,
                 }
             )
+
             continue
 
         assignment = Assignment(
@@ -314,6 +387,7 @@ def assign_required_employee_to_shift(
 
         db.add(assignment)
         db.flush()
+
         assigned_employee_ids.add(employee.id)
 
         return [assignment], None
@@ -333,16 +407,21 @@ def assign_required_employees_to_shifts(
     unfilled_shifts = []
 
     for shift in shifts:
-        assigned_employee_ids = get_shift_assigned_employee_ids(db = db, shift = shift)
+        assigned_employee_ids = get_shift_assigned_employee_ids(
+            db = db,
+            shift = shift,
+        )
 
         if len(assigned_employee_ids) >= 1:
             continue
 
-        assignments, unfilled_shift = assign_required_employee_to_shift(
-            db = db,
-            shift = shift,
-            employees_with_contracts = employees_with_contracts,
-            assigned_employee_ids = assigned_employee_ids,
+        assignments, unfilled_shift = (
+            assign_required_employee_to_shift(
+                db = db,
+                shift = shift,
+                employees_with_contracts = employees_with_contracts,
+                assigned_employee_ids = assigned_employee_ids,
+            )
         )
 
         assignments_created.extend(assignments)
@@ -361,7 +440,10 @@ def assign_additional_employees_to_shifts(
     assignments_created = []
 
     for shift in shifts:
-        assigned_employee_ids = get_shift_assigned_employee_ids(db = db, shift = shift)
+        assigned_employee_ids = get_shift_assigned_employee_ids(
+            db = db,
+            shift = shift,
+        )
 
         candidate_pool = build_available_hours_candidate_pool(
             db = db,
@@ -387,19 +469,30 @@ def assign_additional_employees_to_shifts(
     return assignments_created
 
 
-def generate_schedule(db: Session, schedule_id: int) -> dict[str, Any]:
-    validate_schedule_exists(db = db, schedule_id = schedule_id)
+def generate_schedule(
+    db: Session,
+    schedule_id: int,
+) -> dict[str, Any]:
+    validate_schedule_exists(
+        db = db,
+        schedule_id = schedule_id,
+    )
 
     employees_with_contracts = get_active_employees_with_contracts(db)
-    shifts = get_schedule_shifts(db = db, schedule_id = schedule_id)
+    shifts = get_schedule_shifts(
+        db = db,
+        schedule_id = schedule_id,
+    )
 
     if not employees_with_contracts or not shifts:
         return build_empty_planning_response()
 
-    required_assignments, unfilled_shifts = assign_required_employees_to_shifts(
-        db = db,
-        shifts = shifts,
-        employees_with_contracts = employees_with_contracts,
+    required_assignments, unfilled_shifts = (
+        assign_required_employees_to_shifts(
+            db = db,
+            shifts = shifts,
+            employees_with_contracts = employees_with_contracts,
+        )
     )
 
     additional_assignments = assign_additional_employees_to_shifts(
@@ -414,6 +507,8 @@ def generate_schedule(db: Session, schedule_id: int) -> dict[str, Any]:
         db = db,
         shifts = shifts,
         employees_with_contracts = employees_with_contracts,
-        assignments_created = required_assignments + additional_assignments,
+        assignments_created = (
+            required_assignments + additional_assignments
+        ),
         unfilled_shifts = unfilled_shifts,
     )
