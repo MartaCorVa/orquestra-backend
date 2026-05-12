@@ -76,17 +76,24 @@ class RecurrentShiftCreate(BaseModel):
     end_date: date
     start_time: time
     end_time: time
-    weekdays: list[Weekday] = Field(min_length=1)
+    weekdays: list[Weekday] = Field(min_length = 1)
     creation_type: str = "manual"
     status: str = "planned"
     employee_id: int | None = None
 
-    @model_validator(mode="after")
+    @model_validator(mode = "after")
     def validate_recurrent_shift(self):
-       if self.end_date < self.start_date:
-           raise ValueError("End date must be later than or equal to start date")
-    
-       if self.end_time <= self.start_time:
-           raise ValueError("End time must be later than start time")
-    
-       return self
+        if self.end_date < self.start_date:
+            raise ValueError(
+                "End date must be later than or equal to start date"
+            )
+
+        if (
+            self.start_date == self.end_date and
+            self.end_time <= self.start_time
+        ):
+            raise ValueError(
+                "End time must be later than start time when the recurrent shift starts and ends on the same day"
+            )
+
+        return self
