@@ -199,12 +199,6 @@ def validate_recurrent_shift_payload(payload: RecurrentShiftCreate) -> set[int]:
             detail = "Start date cannot be later than end date",
         )
 
-    if payload.start_time >= payload.end_time:
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = "End time must be later than start time",
-        )
-
     return {WEEKDAY_MAP[weekday] for weekday in payload.weekdays}
 
 
@@ -312,6 +306,20 @@ def assign_employee_to_existing_shift(
     db.add(assignment)
 
 
+def build_recurrent_shift_datetimes(
+    current_date,
+    start_time,
+    end_time,
+) -> tuple[datetime, datetime]:
+    start_datetime = datetime.combine(current_date, start_time)
+    end_datetime = datetime.combine(current_date, end_time)
+
+    if end_datetime <= start_datetime:
+        end_datetime += timedelta(days = 1)
+
+    return start_datetime, end_datetime
+
+
 def create_or_update_recurrent_shift_for_date(
     db: Session,
     payload: RecurrentShiftCreate,
@@ -319,8 +327,11 @@ def create_or_update_recurrent_shift_for_date(
     employee: Employee | None,
     active_contract: Contract | None,
 ) -> Shift:
-    start_datetime = datetime.combine(current_date, payload.start_time)
-    end_datetime = datetime.combine(current_date, payload.end_time)
+    start_datetime, end_datetime = build_recurrent_shift_datetimes(
+        current_date = current_date,
+        start_time = payload.start_time,
+        end_time = payload.end_time,
+    )
 
     existing_shift = get_existing_recurrent_shift(
         db = db,
