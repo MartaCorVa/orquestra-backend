@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from app.models.assignment import Assignment
 from app.models.shift import Shift
@@ -97,7 +97,10 @@ def test_generate_schedule_does_not_create_duplicate_assignments(db, test_schedu
     assert second_run["assignments_created"] == []
 
     stored_assignments = db.query(Assignment).all()
-    assignment_pairs = {(assignment.employee_id, assignment.shift_id) for assignment in stored_assignments}
+    assignment_pairs = {
+        (assignment.employee_id, assignment.shift_id)
+        for assignment in stored_assignments
+    }
 
     assert len(assignment_pairs) == len(stored_assignments)
 
@@ -133,14 +136,26 @@ def test_generate_schedule_avoids_overlapping_assignments(db, test_schedule, act
 
     assert len(result["assignments_created"]) >= 2
 
-    first_shift_assignments = db.query(Assignment).filter(Assignment.shift_id == overlapping_shifts[0].id).all()
-    second_shift_assignments = db.query(Assignment).filter(Assignment.shift_id == overlapping_shifts[1].id).all()
+    first_shift_assignments = db.query(Assignment).filter(
+        Assignment.shift_id == overlapping_shifts[0].id,
+    ).all()
+
+    second_shift_assignments = db.query(Assignment).filter(
+        Assignment.shift_id == overlapping_shifts[1].id,
+    ).all()
 
     assert len(first_shift_assignments) >= 1
     assert len(second_shift_assignments) >= 1
 
-    first_shift_employee_ids = {assignment.employee_id for assignment in first_shift_assignments}
-    second_shift_employee_ids = {assignment.employee_id for assignment in second_shift_assignments}
+    first_shift_employee_ids = {
+        assignment.employee_id
+        for assignment in first_shift_assignments
+    }
+
+    second_shift_employee_ids = {
+        assignment.employee_id
+        for assignment in second_shift_assignments
+    }
 
     assert first_shift_employee_ids.isdisjoint(second_shift_employee_ids)
 
@@ -232,6 +247,11 @@ def test_get_candidate_priority_returns_expected_tuple(
         lambda **kwargs: {shift.start_datetime.date()},
     )
 
+    monkeypatch.setattr(
+        "app.services.planning_service.does_shift_match_contract",
+        lambda **kwargs: True,
+    )
+
     result = get_candidate_priority(
         db = db,
         employee = employee,
@@ -239,7 +259,192 @@ def test_get_candidate_priority_returns_expected_tuple(
         shift = shift,
     )
 
-    assert result == (30, 40, -1)
+    assert result == (1, 30, 40, -1)
+
+
+def test_get_candidate_priority_penalizes_non_matching_contract(
+    db,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import get_candidate_priority
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employee_weekly_assigned_hours",
+        lambda **kwargs: 10,
+    )
+
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employee_weekly_working_days",
+        lambda **kwargs: {shift.start_datetime.date()},
+    )
+
+    monkeypatch.setattr(
+        "app.services.planning_service.does_shift_match_contract",
+        lambda **kwargs: False,
+    )
+
+    result = get_candidate_priority(
+        db = db,
+        employee = employee,
+        contract = contract,
+        shift = shift,
+    )
+
+    assert result == (0, 30, 40, -1)
+
+
+def test_is_contract_working_day_returns_true_for_enabled_day(
+    active_employees,
+    test_shifts,
+):
+    from app.services.planning_service import is_contract_working_day
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    weekday = shift.start_datetime.weekday()
+
+    contract.work_monday = weekday == 0
+    contract.work_tuesday = weekday == 1
+    contract.work_wednesday = weekday == 2
+    contract.work_thursday = weekday == 3
+    contract.work_friday = weekday == 4
+    contract.work_saturday = weekday == 5
+    contract.work_sunday = weekday == 6
+
+    assert is_contract_working_day(
+        contract = contract,
+        shift = shift,
+    ) is True
+
+
+def test_is_contract_working_day_returns_false_for_disabled_day(
+    active_employees,
+    test_shifts,
+):
+    from app.services.planning_service import is_contract_working_day
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    contract.work_monday = False
+    contract.work_tuesday = False
+    contract.work_wednesday = False
+    contract.work_thursday = False
+    contract.work_friday = False
+    contract.work_saturday = False
+    contract.work_sunday = False
+
+    assert is_contract_working_day(
+        contract = contract,
+        shift = shift,
+    ) is False
+
+
+def test_does_shift_match_contract_returns_true_for_non_fixed_schedule_working_day(
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import does_shift_match_contract
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    contract.has_fixed_schedule = False
+
+    monkeypatch.setattr(
+        "app.services.planning_service.is_contract_working_day",
+        lambda **kwargs: True,
+    )
+
+    assert does_shift_match_contract(
+        contract = contract,
+        shift = shift,
+    ) is True
+
+
+def test_does_shift_match_contract_returns_true_for_fixed_matching_schedule(
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import does_shift_match_contract
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    contract.has_fixed_schedule = True
+    contract.preferred_start_time = shift.start_datetime.time()
+    contract.preferred_end_time = shift.end_datetime.time()
+
+    monkeypatch.setattr(
+        "app.services.planning_service.is_contract_working_day",
+        lambda **kwargs: True,
+    )
+
+    assert does_shift_match_contract(
+        contract = contract,
+        shift = shift,
+    ) is True
+
+
+def test_does_shift_match_contract_returns_false_for_fixed_non_matching_schedule(
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import does_shift_match_contract
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    contract.has_fixed_schedule = True
+    contract.preferred_start_time = time(8, 0)
+    contract.preferred_end_time = time(16, 0)
+
+    monkeypatch.setattr(
+        "app.services.planning_service.is_contract_working_day",
+        lambda **kwargs: True,
+    )
+
+    assert does_shift_match_contract(
+        contract = contract,
+        shift = shift,
+    ) is False
+
+
+def test_does_shift_match_contract_returns_false_for_non_working_day(
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import does_shift_match_contract
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    monkeypatch.setattr(
+        "app.services.planning_service.is_contract_working_day",
+        lambda **kwargs: False,
+    )
+
+    assert does_shift_match_contract(
+        contract = contract,
+        shift = shift,
+    ) is False
 
 
 def test_build_empty_planning_response():
@@ -314,6 +519,43 @@ def test_build_available_hours_candidate_pool_excludes_employees_without_remaini
     monkeypatch.setattr(
         "app.services.planning_service.get_employee_weekly_assigned_hours",
         lambda **kwargs: contract.weekly_hours,
+    )
+
+    monkeypatch.setattr(
+        "app.services.planning_service.does_shift_match_contract",
+        lambda **kwargs: True,
+    )
+
+    result = build_available_hours_candidate_pool(
+        db = db,
+        shift = shift,
+        employees_with_contracts = [(employee, contract)],
+        assigned_employee_ids = set(),
+    )
+
+    assert result == []
+
+
+def test_build_available_hours_candidate_pool_excludes_non_matching_contract(
+    db,
+    active_employees,
+    test_shifts,
+    monkeypatch,
+):
+    from app.services.planning_service import build_available_hours_candidate_pool
+
+    employee = active_employees[0]
+    contract = employee.contracts[0]
+    shift = test_shifts[0]
+
+    monkeypatch.setattr(
+        "app.services.planning_service.get_employee_weekly_assigned_hours",
+        lambda **kwargs: 0,
+    )
+
+    monkeypatch.setattr(
+        "app.services.planning_service.does_shift_match_contract",
+        lambda **kwargs: False,
     )
 
     result = build_available_hours_candidate_pool(
