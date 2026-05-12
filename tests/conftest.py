@@ -73,7 +73,10 @@ def client(db):
 
     app.dependency_overrides[get_db] = _override_get_db
 
-    with TestClient(app) as test_client:
-        yield test_client
+    test_client = TestClient(app)
 
-    app.dependency_overrides.clear()
+    try:
+        yield test_client
+    finally:
+        test_client.close()
+        app.dependency_overrides.clear()
