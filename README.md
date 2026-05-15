@@ -13,7 +13,21 @@ Orquestra is a web application for shift planning and fair workload distribution
 
 ---
 
+## 📋 Requirements
+
+The project was developed and tested using:
+
+- Python 3.11
+- PostgreSQL 16
+- Docker Desktop 4.x or higher
+- Docker Compose v2
+
+---
+
 ## 🐳 Run the project with Docker
+
+No manual installation of Python or PostgreSQL is required when using Docker.
+All dependencies are isolated inside the containers.
 
 ### 1. Clone the repository
 
@@ -60,11 +74,33 @@ Initial data includes:
 
 ---
 
+## 👤 Demo Accounts
+
+The database seed includes example accounts for testing purposes.
+
+### Administrator account
+
+```text
+Email: admin@orquestra.com
+Password: admin123
+```
+
+### Employee account
+
+```text
+Email: marta@orquestra.com
+Password: user123
+```
+
+---
+
 ## ⚙️ Environment variables
 
 Configuration is managed using a `.env` file.
 
 You can use `.env.example` as a template.
+
+Copy the example file and replace the values with your own configuration before starting the application.
 
 ### Required variables
 
@@ -73,7 +109,6 @@ DATABASE_URL=
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 SECRET_KEY=
-SONAR_TOKEN=
 ```
 
 ### Notes
@@ -359,7 +394,7 @@ pytest
 
 ---
 
-## 📊 Code Quality (SonarQube)
+## 📊 Code Quality (SonarQube / SonarCloud)
 
 The project includes static code analysis using **SonarQube**.
 
@@ -457,8 +492,16 @@ Contract management is decoupled from employee management:
 
 The planning algorithm prioritizes fulfilling contract hours while respecting all scheduling constraints, providing a balance between fairness and feasibility.
 
+---
+
 ## 🔐 Security notes
 
 - Never commit `.env` files
 - Always use `.env.example` for sharing configuration
 - Keep secrets such as `SONAR_TOKEN` private
+
+---
+
+## 🐳 Reproducibility
+
+The project is fully containerized and can be executed in a reproducible way on any machine with Docker installed.
